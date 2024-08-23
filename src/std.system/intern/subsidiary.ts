@@ -41,6 +41,5 @@ class SubsidiaryRole extends theater.Role<System.Subsidiary>()(Object) implement
     this.#id = -1
     this.#worker = void 0
   }
-  @theater.Play
-  public *id(): Theater.Scene<number> { return this.#id }
+  @theater.Play public *id(): Theater.Scene<number> { return this.#id }
 }

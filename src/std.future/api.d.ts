@@ -205,6 +205,12 @@ declare module 'std.future' {
        */
       produce(item: T): Cue<void>
       /**
+       * Produce item at the back synchronously.
+       * The production is silently dropped when the buffer is already full.  
+       * @param item Item to add
+       */
+      produceNow(item: T): void
+      /**
        * Consume item from the front.
        * @returns A cue that signals the consumed item
        */

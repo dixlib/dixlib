@@ -40,8 +40,7 @@ const AnyRoleMixin = fx.mixin<AnyRole>(Super => {
       }
       return agent.cast(casting).actor
     }
-    @Play
-    public *kill(): Theater.Scene<boolean> {
+    @Play public *kill(): Theater.Scene<boolean> {
       swallowPoison()
     }
   }

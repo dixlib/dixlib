@@ -9,7 +9,7 @@ interface Director extends Actor {
 interface Janitor extends Actor { }
 interface Troupe extends Actor { }
 // --- JavaScript ---
-import { fx } from "../extern.js"
+import { fx, news } from "../extern.js"
 import { Gig, surprise } from "./gig.js"
 import { Destiny, ExclusiveStatus } from "./lifecycle.js"
 import { Role } from "./role.js"
@@ -242,23 +242,21 @@ function* settleHint<T>(hint: Future.Hint<T>, resolve: (result: T) => void, reje
 }
 // base class for roles of immortal actors
 class ImmortalRole extends Role<Actor>()(Object) {
-  @Play
-  public *kill() {
+  @Play public *kill() {
     // immortal actor cannot be killed
     return false
   }
 }
 class DirectorRole extends Role<Director>()(ImmortalRole) implements Theater.Script<Director> {
-  @Play
-  public *bootstrap(): Theater.Scene<Immortals> {
+  @Play public *bootstrap(): Theater.Scene<Immortals> {
     // inform about incidents in background jobs of janitor
     function background({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
-      console.info(`background failure in "${String(selector)}"/${parameters.length}`, blooper)
+      news.info("background failure in %s/%d %O", String(selector), parameters.length, blooper)
       return "forgive"
     }
     // warn about incidents of troupe actor (only happens when a toplevel actor escalates a blooper)
     function unexpected({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
-      console.warn(`escalation incident in "${String(selector)}"/${parameters.length}`, blooper)
+      news.warn("escalation incident in %s/%d %O", String(selector), parameters.length, blooper)
       return "forgive"
     }
     return [

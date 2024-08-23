@@ -91,16 +91,16 @@ const AnyContainerRoleMixin = fx.mixin<AnyContainerRole>(Super => {
       this.#containers[key] = context.container
       this.#contexts[key] = context
     }
-    @theater.Play
-    public *view(): Theater.Scene<System.Context<System.Container>> {
+    @theater.Play public *view(): Theater.Scene<System.Context<System.Container>> {
       return this.#view ??= new Context(this.self, this.#components, this.#contexts)
     }
-    @theater.Play
-    public *assign<A extends Theater.Actor>(key: string, component: A): Theater.Scene<void> {
+    @theater.Play public *assign<A extends Theater.Actor>(key: string, component: A): Theater.Scene<void> {
       this.assignComponent(key, component)
     }
-    @theater.Play
-    public *mount<C extends System.Container>(key: string, container: C): Theater.Scene<System.Context<C>> {
+    @theater.Play public *mount<C extends System.Container>(
+      key: string,
+      container: C
+    ): Theater.Scene<System.Context<C>> {
       const context = yield* theater.when(container.view())
       this.mountContext(key, context)
       return context

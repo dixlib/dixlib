@@ -1,13 +1,14 @@
 declare module 'std.system' {
   import type Fx from 'std.fx'
   import type Loader from 'std.loader'
+  import type News from 'std.news'
   import type Theater from 'std.theater'
   export default System
   /**
    * The system service organizes components.
    * All components are actors, but some components are containers that group other components.
-   * Systems are themselves organized in a parent/child hierarchy, with a single toplevel system.
-   * The others are direct or indirect subsystems of this toplevel system. 
+   * Systems are themselves organized in a parent/child hierarchy, with a single top system.
+   * The others are direct or indirect subsystems of this top system. 
    */
   interface System {
     /**
@@ -161,8 +162,25 @@ declare module 'std.system' {
        */
       id(): Theater.Job<number>
     }
+    /**
+     * The system logger enriches news messages with an origin.
+     */
+    interface LogMessage<P extends unknown[]> extends News.Message<P> {
+      /**
+       * Ancestry chain of system from where log message originates.
+       */
+      readonly origin: number[]
+    }
+    /**
+     * A logger reports log messages.
+     * Every system has a logger component at path "logger".
+     */
     interface Logger extends Theater.Actor {
-      report(): void
+      /**
+       * Report message.
+       * @param message The message to report
+       */
+      report<P extends unknown[]>(message: LogMessage<P>): Theater.Job<void>
     }
   }
 }

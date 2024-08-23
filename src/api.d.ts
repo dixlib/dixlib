@@ -5,6 +5,7 @@
 /// <reference path="./std.kernel/api.d.ts" />
 /// <reference path="./std.loader/api.d.ts" />
 /// <reference path="./std.loop/api.d.ts" />
+/// <reference path="./std.news/api.d.ts" />
 /// <reference path="./std.syntax/api.d.ts" />
 /// <reference path="./std.system/api.d.ts" />
 /// <reference path="./std.theater/api.d.ts" />

@@ -10,6 +10,6 @@
     "compile": "tsc --build --verbose && rollup --config"
   },
   "devDependencies": {
-    "@types/node": "^20.14.12"
+    "@types/node": "^22.5.0"
   }
 }

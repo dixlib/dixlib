@@ -448,6 +448,16 @@ class Exchange<T> implements Future.Exchange<T> {
     }
     return once(begin, end)
   }
+  public produceNow(item: T): void {
+    if (this.#underflow.length > 0) {
+      // reveal item to longest waiting consumer
+      this.#underflow.shift()!({ prompt: item })
+    } else if (this.#items.length < this.#capacity) {
+      // buffer item for future consumer
+      this.#items.push(item)
+    }
+    // else ignore item production silently
+  }
   public consume(): Future.Cue<T> {
     return once(reveal => {
       if (this.#overflow.length > 0) {
