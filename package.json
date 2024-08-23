@@ -1,0 +1,36 @@
+{
+  "name": "dixlib",
+  "description": "A universal service library for modern JavaScript systems.",
+  "version": "0.1.0",
+  "author": "dixlib@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dixlib/system.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dixlib/system/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.8.0",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "types": "./src/api",
+  "scripts": {
+    "compile": "tsc --build --verbose && rollup --config && pnpm -r compile"
+  },
+  "engines": {
+    "node": ">=22.5.1",
+    "npm": ">=10.8.2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "glob": "^11.0.0",
+    "rollup": "^4.20.0",
+    "tslib": "^2.6.3",
+    "typescript": "^5.5.4"
+  }
+}

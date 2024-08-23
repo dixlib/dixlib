@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig-base.json",
+  "exclude": [
+    "./platform"
+  ],
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./build",
+    "lib": [
+      "esnext",
+      "webworker"
+    ],
+    "typeRoots": [
+      "./src"
+    ],
+    "types": [
+      "api"
+    ],
+    "tsBuildInfoFile": "./build/tsconfig.buildinfo"
+  }
+}

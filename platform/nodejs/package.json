@@ -1,0 +1,15 @@
+{
+  "name": "@dixlib/nodejs",
+  "description": "NodeJS runtime",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./bindings.js": "./build/bindings.js"
+  },
+  "scripts": {
+    "compile": "tsc --build --verbose && rollup --config"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12"
+  }
+}
