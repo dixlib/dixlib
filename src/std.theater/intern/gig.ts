@@ -274,7 +274,7 @@ class Escalation<A extends Actor> extends Error {
   readonly #incident: Theater.Incident<A>
   constructor(incident: Theater.Incident<A>) {
     const { selector, parameters, blooper } = incident
-    super(`stage incident at ${String(selector)}"/${parameters.length}`, { cause: blooper })
+    super(`stage incident at "${String(selector)}"/${parameters.length}`, { cause: blooper })
     this.#incident = incident
   }
   public get incident() {

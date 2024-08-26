@@ -218,6 +218,7 @@ declare module 'std.theater' {
        * By default, the initialization code does nothing (and is not even performed).
        * Subclasses should define their own initialization code.
        * This method should not be called directly by user code.
+       * Actors postpone jobs until the initialization is complete. 
        * @param p Construction parameters
        * @returns Initialization scene
        */
@@ -240,7 +241,7 @@ declare module 'std.theater' {
        * @returns Improvisation scene
        * @throws When this role is not played by the busy actor on stage 
        */
-      protected improviseScene<T, P extends unknown[]>(selector: string | symbol, ...p: P): Scene<T>
+      protected improviseScene<T, P extends unknown[]>(selector: string | symbol, p: P): Scene<T>
       /**
        * Create inert job for self to play on stage.
        * @param scenic Scenic code to perform on stage

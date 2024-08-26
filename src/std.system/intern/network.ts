@@ -1,6 +1,8 @@
 // --- TypeScript ---
 import type Future from 'std.future'
 import type Kernel from 'std.kernel'
+import type Loader from 'std.loader'
+import type System from 'std.system'
 import type Theater from 'std.theater'
 // association message binds a system (id) to a port in the network
 interface Association {
@@ -13,7 +15,7 @@ interface Connection {
 }
 // request message is a component method invocation
 interface Request {
-  // unique sequence number of request/response pair (per channel)
+  // unique sequence number of request/response pair (per portal)
   readonly sequence: number
   // path to component actor that performs the method
   readonly path: string
@@ -24,7 +26,7 @@ interface Request {
 }
 // response message is result of a request
 interface Response {
-  // same sequence number as corresponding request (over same channel)
+  // same sequence number as corresponding request (over same portal)
   readonly sequence: number
   // signal with prompt or blooper of component method invocation
   readonly signal: Future.Signal<unknown>
@@ -42,26 +44,43 @@ interface Reservation {
 // all network messages
 type Message = Association | Connection | Request | Response | Cancellation | Allocation | Reservation
 // --- JavaScript ---
-import { parentPort } from "../main.js"
-import { future, kernel, theater } from "../extern.js"
-import { ancestry, id, root } from "./singleton.js"
+import { parentPort, ancestry as inheritedAncestry } from "../main.js"
+import { future, kernel, loader as theLoader, news, theater } from "../extern.js"
+import { ContainerRole } from "./container.js"
+import { LoggerRole } from "./logger.js"
+
+export function ancestry() {
+  return systemAncestry.slice() as [number, ...number[]]
+}
+
+export function id(): number {
+  return systemAncestry[0]
+}
+
+export function root(): System.Context<System.Root> {
+  return rootContext
+}
+
+export function loader(): Loader {
+  return theLoader
+}
 
 export function Nearby<A extends Theater.Actor>(): Theater.RoleClass<A, [number, string]> {
   return NearbyRole as unknown as Theater.RoleClass<A, [number, string]>
 }
 
 export function associatePort(candidateId: number, port: Kernel.MessagePort) {
-  if (channels[candidateId]) {
+  if (portals[candidateId]) {
     throw new Error(`cannot associate system ${candidateId} twice on the network`)
   }
   if (candidateId === id()) {
     throw new Error(`cannot associate system ${candidateId} in its own network`)
   }
-  const channel = channels[candidateId] = new Channel(port, candidateId)
+  const portal = portals[candidateId] = new Portal(port, candidateId)
   if (associating[candidateId]) {
     // resolve promise to reveal the expected association
     const [, resolve] = associating[candidateId]
-    resolve(channel)
+    resolve(portal)
     delete associating[candidateId]
   }
 }
@@ -70,39 +89,70 @@ export function connectSystems(left: number, right: number) {
   if (left === right) {
     throw new Error(`invalid connection ${left} <-> ${right}`)
   }
-  const leftChannel = channels[left], rightChannel = channels[right]
-  if (!leftChannel || !rightChannel) {
-    throw new Error(`missing ${leftChannel ? "" : "L"}${rightChannel ? "" : "R"} in connection ${left} <-> ${right}`)
+  const leftPortal = portals[left], rightPortal = portals[right]
+  if (!leftPortal || !rightPortal) {
+    throw new Error(`missing ${leftPortal ? "" : "L"}${rightPortal ? "" : "R"} in connection ${left} <-> ${right}`)
   }
   // send association message to both sides of the connection
   const { port1, port2 } = new MessageChannel()
   const rightAssociation: Association = { id: right, port: port1 }
-  leftChannel.port.postMessage(rightAssociation, [port1])
+  leftPortal.port.postMessage(rightAssociation, [port1])
   const leftAssociation: Association = { id: left, port: port2 }
-  rightChannel.port.postMessage(leftAssociation, [port2])
+  rightPortal.port.postMessage(leftAssociation, [port2])
 }
 
-export function allocateId(): Future.Cue<number> {
+export function allocateNextId(): Future.Cue<number> {
   if (kernel.isUnparented()) {
     // top system keeps track of next system id
     return future.spark({ prompt: nextId++ })
   } else {
     // other systems send an allocation message to the top system
     const allocation: Allocation = {}
-    channels[0].port.postMessage(allocation)
-    // consume allocated id from allocation exchange after reservation message has arrived
+    portals[0].port.postMessage(allocation)
+    // consume id from allocation exchange after reservation message has arrived
     return allocationExchange.consume()
   }
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
+// use inherited ancestry that parent passed on if this is not the top system in the network
+const systemAncestry = kernel.isUnparented() ? [0] : inheritedAncestry
+// role of a system actor
+class RootRole extends ContainerRole<System.Root>()(Object) implements Theater.Script<System.Root> {
+  protected *initializeRole(): Theater.Scene<void> {
+    const logger = kernel.isUnparented() ?
+      // top logger writes messages to console
+      this.castChild<System.Logger, []>({ Role: LoggerRole, p: [], guard: () => "forgive" }) :
+      // logger in subsystems forwards messages to top logger (system id = 0, path = "logger")
+      this.castChild<System.Logger, [number, string]>({
+        Role: NearbyRole as unknown as Theater.RoleClass<System.Logger, [number, string]>,
+        p: [0, "logger"],
+        guard: () => "forgive"
+      })
+      // every system has a logger component at path "logger"
+    this.assignComponent("logger", logger)
+    this.playScene(function* () {
+      // make sure the system consumes news items and reports them to the logger 
+      for (; ;) {
+        const message = yield* theater.when(news.consume())
+        yield* theater.when(logger.report({ ...message, origin: [...systemAncestry] }))
+      }
+    }).run()
+  }
+  @theater.Play public *ancestry(): Theater.Scene<[number, ...number[]]> { return ancestry() }
+  @theater.Play public *id(): Theater.Scene<number> { return id() }
+  @theater.Play public *launch(): Theater.Scene<void> {
+    console.log(performance.now())
+    throw new Error("dammit")
+  }
+}
 // the next id is only valid in the top system; the rendezvous allocation exchange is only valid in a subsystem
 let nextId = 1, allocationExchange = future.exchange<number>(0)
 // keep track of expected associations with other systems
-const associating: { [id: number]: [Promise<Channel>, (channel: Channel) => void] | undefined } = Object.create(null)
-// all network channels from this system to other systems
-const channels: { [id: number]: Channel } = Object.create(null)
-class Channel {
+const associating: { [id: number]: [Promise<Portal>, (portal: Portal) => void] | undefined } = Object.create(null)
+// all network portals from this system to other systems
+const portals: { [id: number]: Portal } = Object.create(null)
+class Portal {
   readonly #port: Kernel.MessagePort
   // pending revelations for sent requests
   readonly #pending: { [sequence: number]: Future.Reveal<unknown> | undefined }
@@ -110,9 +160,9 @@ class Channel {
   #nextSequence: number
   constructor(port: Kernel.MessagePort, otherId: number) {
     this.#port = port
-    const pending = this.#pending = Object.create(null)
+    const pending: { [sequence: number]: Future.Reveal<unknown> | undefined } = this.#pending = Object.create(null)
     this.#nextSequence = 1
-    const running  = Object.create(null)
+    const running: { [sequence: number]: Theater.Job<unknown> | undefined } = Object.create(null)
     port.addEventListener("message", event => {
       const message: Message = event.data
       if ("id" in message) {
@@ -134,7 +184,7 @@ class Channel {
           const response: Response = { sequence, signal: { blooper: new Error(`invalid component path "${path}"`) } }
           port.postMessage(response)
         } else {
-          //@ts-ignore: dynamically invoke actor method to create component job
+          // @ts-ignore: dynamically invoke actor method to create component job
           const job: Theater.Job<unknown> = component[message.selector](...message.parameters)
           // play scene on theater stage for component job
           running[sequence] = theater.play(function* () {
@@ -154,13 +204,17 @@ class Channel {
         if (reveal) {
           reveal(signal)
         } else {
-          //TODO report warning?
+          news.warn("missing pending request for received response %d", sequence)
         }
       } else if ("unsequence" in message) {
         // process received cancellation message
-        const { unsequence } = message
-        running[unsequence]?.quit()
-        delete running[unsequence]
+        const { unsequence } = message, job = running[unsequence]
+        if (job) {
+          delete running[unsequence]
+          job.quit()
+        } else {
+          news.warn("missing running job for cancellation %d", unsequence)
+        }
       } else if ("allocated" in message) {
         // process received reservation message
         const { allocated } = message
@@ -170,7 +224,7 @@ class Channel {
         }
         // underflow should occur when this system has an outstanding allocation message
         if (!allocationExchange.isUnderflowing) {
-          throw new Error(`illegal state for reservation of ${allocateId} from ${otherId} at ${id()}`)
+          throw new Error(`illegal state for reservation of ${allocated} from ${otherId} at ${id()}`)
         }
         // play scene on theater stage to produce the allocated id and unblock the consumer
         theater.play(function* () { yield allocationExchange.produce(allocated) }).run()
@@ -210,30 +264,30 @@ class Channel {
     return future.once(begin, end)
   }
 }
-function startChannel(target: number): Promise<Channel> {
+function startPortal(target: number): Promise<Portal> {
   if (associating[target]) {
     // avoid duplicating expected associations; reuse existing promise 
     const [promise] = associating[target]
     return promise
   } else {
     // create new promise and install expected association 
-    const { promise, resolve } = Promise.withResolvers<Channel>()
+    const { promise, resolve } = Promise.withResolvers<Portal>()
     associating[target] = [promise, resolve]
     // send connection message to top system (resulting in association between this and target system)
     const connection: Connection = { target }
-    channels[0].port.postMessage(connection)
+    portals[0].port.postMessage(connection)
     return promise
   }
 }
 class NearbyRole extends theater.Role<Theater.Actor>()(Object) implements Theater.Script<Theater.Actor> {
   readonly #id: number
   readonly #path: string
-  protected *improviseScene<T, P extends unknown[]>(selector: string | symbol, ...p: P): Theater.Scene<T> {
+  protected *improviseScene<T, P extends unknown[]>(selector: string | symbol, p: P): Theater.Scene<T> {
     if (typeof selector === "symbol") {
       throw new Error(`unsupported symbolic selector for nearby actor "${String(selector)}"`)
     }
-    const channel = channels[this.#id] ?? (yield* theater.when(startChannel(this.#id)))
-    return yield* theater.when<T>(channel.send(this.#path, selector, p))
+    const portal = portals[this.#id] ?? (yield* theater.when(startPortal(this.#id)))
+    return yield* theater.when<T>(portal.send(this.#path, selector, p))
   }
   constructor(id: number, path: string) {
     super()
@@ -241,6 +295,13 @@ class NearbyRole extends theater.Role<Theater.Actor>()(Object) implements Theate
     this.#path = path
   }
 }
+const rootContext = await theater.cast<System.Root, []>({
+  Role: RootRole, p: [],
+  guard({ blooper, selector, parameters }: Theater.Incident<Theater.Actor>): Theater.Verdict {
+    news.error(`system container problem "%s"/%d - %O`, String(selector), parameters.length, blooper)
+    return "forgive"
+  }
+}).view()
 if (!kernel.isUnparented()) {
   // grab parent id from ancestry chain and associate this child with its parent port in the network
   associatePort(ancestry()[1], parentPort)

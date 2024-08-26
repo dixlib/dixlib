@@ -27,25 +27,25 @@ export async function startWorker<Init>(
   const worker = new Worker(workerScript, { workerData, transferList: [parentPort, ...transfer] })
   function terminate() { worker.terminate() }
   try {
-    await new Promise<void>((resolve, reject) => {
-      function onceError(error: Error) {
-        reject(error)
-        worker.off("message", onceMessage)
-        clearTimeout(timer)
-      }
-      function onceMessage() {
-        resolve()
-        worker.off("error", onceError)
-        clearTimeout(timer)
-      }
-      worker.once("error", onceError)
-      worker.once("message", onceMessage)
-      const timer = setTimeout(() => {
-        reject(new Error(`timeout on main confirmation from "${path}"`))
-        worker.off("error", onceError)
-        worker.off("message", onceMessage)
-      }, 5e3)
-    })
+    const { promise, resolve, reject } = Promise.withResolvers<void>()
+    function onceError(error: Error) {
+      reject(error)
+      worker.off("message", onceMessage)
+      clearTimeout(timer)
+    }
+    function onceMessage() {
+      resolve()
+      worker.off("error", onceError)
+      clearTimeout(timer)
+    }
+    worker.once("error", onceError)
+    worker.once("message", onceMessage)
+    const timer = setTimeout(() => {
+      reject(new Error(`timeout on main confirmation from "${path}"`))
+      worker.off("error", onceError)
+      worker.off("message", onceMessage)
+    }, 5e3)
+    await promise
     return Object.freeze({ childPort, terminate })
   } catch (problem) {
     // terminate on failure

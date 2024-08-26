@@ -32,26 +32,26 @@ export async function startWorker<Init>(
     const startup: Startup<Init> = { path: path.href, initial, parentPort }
     // try to transfer parent port and to clone initial startup info to worker
     worker.postMessage(startup, [parentPort, ...transfer])
-    await new Promise<void>((resolve, reject) => {
-      function onceError() {
-        reject(new Error(`error in "${workerScript}" while loading main "${path}"`))
-        worker.removeEventListener("message", onceMessage)
-        clearTimeout(timer)
-      }
-      function onceMessage() {
-        resolve()
-        worker.removeEventListener("error", onceError)
-        clearTimeout(timer)
-      }
-      worker.addEventListener("error", onceError, { once: true })
-      worker.addEventListener("message", onceMessage, { once: true })
-      // five seconds should be enough to start a worker...
-      const timer = setTimeout(() => {
-        reject(new Error(`timeout on main confirmation from "${path}"`))
-        worker.removeEventListener("error", onceError)
-        worker.removeEventListener("message", onceMessage)
-      }, 5e3)
-    })
+    const { promise, resolve, reject } = Promise.withResolvers<void>()
+    function onceError() {
+      reject(new Error(`error in "${workerScript}" while loading main "${path}"`))
+      worker.removeEventListener("message", onceMessage)
+      clearTimeout(timer)
+    }
+    function onceMessage() {
+      resolve()
+      worker.removeEventListener("error", onceError)
+      clearTimeout(timer)
+    }
+    worker.addEventListener("error", onceError, { once: true })
+    worker.addEventListener("message", onceMessage, { once: true })
+    // five seconds should be enough to start a worker...
+    const timer = setTimeout(() => {
+      reject(new Error(`timeout on main confirmation from "${path}"`))
+      worker.removeEventListener("error", onceError)
+      worker.removeEventListener("message", onceMessage)
+    }, 5e3)
+    await promise
     return Object.freeze({ childPort, terminate })
   } catch (problem) {
     // terminate on failure
@@ -67,8 +67,8 @@ let uniqueMacrotask = 1
 const macrotasks: { [id: number]: () => void } = Object.create(null)
 const { port1, port2 } = new MessageChannel()
 port1.addEventListener("message", event => {
-    const id = event.data, macrotask = macrotasks[id]
-    delete macrotasks[id]
-    macrotask()
+  const id = event.data, macrotask = macrotasks[id]
+  delete macrotasks[id]
+  macrotask()
 })
 port1.start()

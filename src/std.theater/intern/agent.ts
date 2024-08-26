@@ -21,7 +21,8 @@ export function isActor<A extends Actor>(it: unknown): it is A {
 }
 
 export function isEmployable(actor: Actor) {
-  return !facade.expose(actor).isSuspended
+  const agent = facade.expose(actor)
+  return !agent.isInitializing && !agent.isSuspended
 }
 
 export function play<T, P extends unknown[]>(scenic: Theater.Scenic<T, P>, ...p: P): Theater.Job<T> {
@@ -51,15 +52,41 @@ export class Agent extends Destiny {
   #workload?: ExclusiveStatus<Gig>
   // anticipating to work on gigs from agenda
   #agenda?: ExclusiveStatus<Gig>
+  // initialization gig
+  #initializing?: Gig
+  // postponing gigs until initialization is complete
+  #postponing?: ExclusiveStatus<Gig>
   // role encapsulates transient state of actor
   #role?: Theater.Role<Actor>
   // install or reinstall fresh role
-  #install(Role: Theater.RoleClass<Actor, unknown[]>, p: unknown[]) {
+  #initialize(Role: Theater.RoleClass<Actor, unknown[]>, p: unknown[]) {
     // @ts-ignore: access protected method
-    const { initializeRole }: Theater.Role<Theater.Role> = this.#role = new Role(...p)
-    if (initializeRole !== doNothing) {
+    const { initializeRole }: Theater.Role<Theater.Role> =
+      this.#role = new Role(...p)
+    if (initializeRole === doNothing) {
+      // skip initialization phase
+      this.#initializing = this.#postponing = void 0
+    } else {
+      const outerThis = this 
+      this.#initializing = new Gig(this, function* () {
+        try {
+          // @ts-ignore: inner this receiver is the new role
+          yield* this.initializeRole(...p)
+        } finally {
+          // initialization is complete (successful or not) when control reaches here
+          const postponing = outerThis.#postponing
+          outerThis.#initializing = outerThis.#postponing = void 0
+          if (postponing) {
+            // repost postponed gigs
+            for (let gig: Gig | undefined; (gig = postponing.first);) {
+              outerThis.post(gig)
+            }
+          }
+        }
+      }, [])
       // ready to initialize new role
-      new Gig(this, initializeRole, p).start()
+      this.#postponing = void 0
+      this.#initializing.start()
     }
   }
   // clean up mess of role, either before burial or reinstall
@@ -72,10 +99,10 @@ export class Agent extends Destiny {
       // all team members die upon reset
       member.bury()
     }
-    const agenda = this.#agenda!, workload = this.#workload!, role = this.#role!
+    const agenda = this.#agenda!, workload = this.#workload!, postponing = this.#postponing, role = this.#role!
     // @ts-ignore: access protected method
     const { disposeRole } = role
-    for (let gig: Gig | undefined; (gig = agenda.first ?? workload.first);) {
+    for (let gig: Gig | undefined; (gig = agenda.first ?? workload.first ?? postponing?.first);) {
       gig.stop(reason)
     }
     if (disposeRole !== doNothing) {
@@ -91,6 +118,9 @@ export class Agent extends Destiny {
     if (this.#agenda!.size) {
       throw new Error("agenda should be empty after reset")
     }
+    if (this.#postponing?.size) {
+      throw new Error("stalling should be empty after reset")
+    }
   }
   #ghost(message: string) {
     if (this.fate) {
@@ -105,11 +135,14 @@ export class Agent extends Destiny {
     this.#team = new Map()
     this.#workload = new ExclusiveStatus("running")
     this.#agenda = new ExclusiveStatus("anticipated")
-    this.#install(Role, p)
+    this.#initialize(Role, p)
     negotiate(this)
   }
   public get isSuspended() {
     return this.#suspended
+  }
+  public get isInitializing() {
+    return !!this.#initializing
   }
   public get actor() {
     return this.#actor
@@ -167,14 +200,15 @@ export class Agent extends Destiny {
     this.#reset("actor recast")
     // leave suspended state with fresh role
     this.#suspended = false
-    this.#install(Role, p)
+    this.#initialize(Role, p)
     negotiate(this)
   }
   public bury() {
     this.#reset("actor funeral")
     // remove all tracks of ghost team member
     this.#manager!.#team!.delete(this)
-    this.#manager = this.#team = this.#role = this.#workload = this.#agenda = void 0
+    this.#manager = this.#team = this.#role = this.#workload = this.#agenda =
+      this.#initializing = this.#postponing = void 0
     this.finish({})
   }
   public cast({ Role, p, guard }: Theater.Casting<Actor, Actor, unknown[]>): Agent {
@@ -205,9 +239,14 @@ export class Agent extends Destiny {
       gig.stop("ghost encounter")
     } else {
       // add more work
-      if (gig.isAnticipated) {
+      if (this.#initializing && gig !== this.#initializing) {
+        // postpone gig until initialization is complete
+        const postponing = this.#postponing ??= new ExclusiveStatus("postponed")
+        postponing.add(gig)
+      } else if (gig.isAnticipated) {
         this.#agenda!.add(gig)
       } else {
+        // this agent is ready to work on gig
         this.#workload!.add(gig)
       }
       negotiate(this)
@@ -251,12 +290,12 @@ class DirectorRole extends Role<Director>()(ImmortalRole) implements Theater.Scr
   @Play public *bootstrap(): Theater.Scene<Immortals> {
     // inform about incidents in background jobs of janitor
     function background({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
-      news.info("background failure in %s/%d %O", String(selector), parameters.length, blooper)
+      news.info(`background failure in "%s"/%d %O`, String(selector), parameters.length, blooper)
       return "forgive"
     }
     // warn about incidents of troupe actor (only happens when a toplevel actor escalates a blooper)
     function unexpected({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
-      news.warn("escalation incident in %s/%d %O", String(selector), parameters.length, blooper)
+      news.warn(`escalation incident in "%s"/%d %O`, String(selector), parameters.length, blooper)
       return "forgive"
     }
     return [

@@ -43,7 +43,9 @@ declare module 'std.news' {
     error<P extends unknown[]>(format: string, ...p: P): void
     /**
      * Consume next reported news message.
-     * By default, news messages are consumed by the system service.
+     * By default, news messages are consumed by the system logger.
+     * Regular application code should probably not consume messages.
+     * It should only report messages with the debug, info, log, warn and error operations.
      * @returns A cue that signals a message
      */
     consume<P extends unknown[]>(): Future.Cue<News.Message<P>>

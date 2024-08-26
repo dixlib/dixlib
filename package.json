@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A universal service library for modern JavaScript systems.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
@@ -19,7 +19,8 @@
   },
   "types": "./src/api",
   "scripts": {
-    "compile": "tsc --build --verbose && rollup --config && pnpm -r compile"
+    "compile": "tsc --build --verbose && rollup --config && pnpm -r compile",
+    "serve": "pnpm compile && ws --http2 --log.format dev"
   },
   "engines": {
     "node": ">=22.5.1"
@@ -28,6 +29,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.6",
     "glob": "^11.0.0",
+    "local-web-server": "^5.4.0",
     "rollup": "^4.21.0",
     "tslib": "^2.6.3",
     "typescript": "^5.5.4"
