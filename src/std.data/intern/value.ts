@@ -45,7 +45,8 @@ export function equals<T extends Data.Value>(left: T, right: T): boolean {
   if (right instanceof CompositeValue && left.constructor === right.constructor && left.size === right.size) {
     // left and right are similar compositions i.e., two lists, two dictionaries, two records or two tuples
     for (const ix of left.indices) {
-      if (typeof ix === "string" && !right.has(ix) || !equals((left as CompositeValue<Data.Index, Data.Value, Data.Composition, {}>).at(ix), right.at(ix))) {
+      if (typeof ix === "string" && !right.has(ix)
+        || !equals((left as CompositeValue<Data.Index, Data.Value, Data.Composition, {}>).at(ix), right.at(ix))) {
         return false
       }
     }

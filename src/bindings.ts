@@ -1,7 +1,7 @@
 // --- JavaScript ---
 export const id = import.meta.url
 export const service: ServiceMap = {
-  'std.data': { specification: true, implementation: true },
+  'std.data': { specification: true, implementation: true, typedefs: true },
   'std.fn': { specification: true, implementation: true },
   'std.future': { specification: true, implementation: true },
   'std.fx': { specification: true, implementation: true },

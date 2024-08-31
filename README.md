@@ -30,9 +30,8 @@ The default export combines the interface and namespace.
 
 ```typescript
 declare module 'acme.awesome' {
-  // import types from other services
-  import Fabulous from 'acme.fabulous'
-  import Sublime from 'acme.sublime'
+  import type Fabulous from 'acme.fabulous'
+  import type Sublime from 'acme.sublime'
   export default Awesome
   interface Awesome {
     // service operations

@@ -88,7 +88,10 @@ export function record<F extends Data.FieldValues>(fields: Data.FieldTypesOf<F>)
   return pristine as unknown as Data.Type<Data.Record<F>>
 }
 
-export function tuple<T extends Data.ValueSequence>(...parts: Data.TypesOf<T>): Data.Type<Data.Tuple<T>> {
+export function tuple<T extends Data.ValueSequence>(parts: Data.TypesOf<T>): Data.Type<Data.Tuple<T>> {
+  if (parts.length < 2) {
+    throw new Error("tuple type requires at least two parts")
+  }
   let existingTypes = allTupleTypes[parts.length - 2]
   if (existingTypes) {
     for (const weakly of existingTypes) {
@@ -106,7 +109,7 @@ export function tuple<T extends Data.ValueSequence>(...parts: Data.TypesOf<T>): 
   return pristine
 }
 
-export function union<T extends Data.ValueSequence>(...alternatives: Data.TypesOf<T>): Data.Type<T[number]> {
+export function union<T extends Data.ValueSequence>(alternatives: Data.TypesOf<T>): Data.Type<T[number]> {
   const [isOptional, significant] = sortSignificant(alternatives)
   if (significant.length === 1) {
     // no need for a union type when only one significant alternative remains
@@ -148,9 +151,27 @@ export function optional<T extends Data.Wildcard>(mandatory: Data.Type<T>): Data
   }
 }
 
+export function createDummy(): Data.Type<Data.Value> {
+  return facade.handle(dummy)
+}
+
+export function swapDummy(dummyType: Data.Type<Data.Value>, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
+  if (facade.expose(dummyType) !== dummy) {
+    throw new Error("internal error with dummy of type swap")
+  }
+  const datatype = facade.expose(type)
+  if (datatype === dummy) {
+    throw new Error("internal error with type of dummy swap")
+  }
+  // swap dummmy reference with other reference
+  facade.reset(dummyType, datatype)
+  facade.reset(type, dummy)
+  return dummyType
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 const facade = fx.facade<Data.Type<Data.Value>, Datatype<Data.Value>>(
-  "std.fn.data:Type",
+  "std.data:Type",
   Object.create(Object.prototype, {
     includes: { value(v: Data.Value) { return facade.expose(this).test(v) } },
     match: {
@@ -162,11 +183,23 @@ const facade = fx.facade<Data.Type<Data.Value>, Datatype<Data.Value>>(
 )
 abstract class Datatype<T extends Data.Value> {
   protected abstract get order(): number
-  public compare(other: Datatype<Data.Value>): number {
-    return Math.sign(this.order - other.order)
-  }
+  public compare(other: Datatype<Data.Value>): number { return Math.sign(this.order - other.order) }
   public abstract test(v: Data.Value): v is T
   public abstract accept<O, P extends unknown[]>(type: Data.Type<Data.Value>, pattern: Data.TypePattern<O, P>, p: P): O
+}
+const dummy = new class DummyDatatype extends Datatype<undefined> {
+  protected get order(): number {
+    throw new Error("internal error with illegal access of dummy type")
+  }
+  public compare(_other: Datatype<Data.Value>): number { 
+    throw new Error("internal error with illegal access of dummy type")
+  }
+  public test(_v: Data.Value): _v is undefined {
+    throw new Error("internal error with illegal access of dummy type")
+  }
+  public accept<O, P extends unknown[]>(_type: Data.Type<Data.Value>, _pattern: Data.TypePattern<O, P>, _p: P): O {
+    throw new Error("internal error with illegal access of dummy type")
+  }
 }
 function compareDatatype(left: Datatype<Data.Value>, right: Datatype<Data.Value>): number {
   return left === right ? 0 : left.compare(right)
@@ -484,7 +517,7 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
       isOptional = true
       mandatory.match(addAlternative)
     },
-    orelse() { throw new Error("internal error") }
+    orelse() { throw new Error("internal error in construction of union type") }
   }
   for (const type of alternatives) {
     type.match(addAlternative)

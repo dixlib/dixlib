@@ -187,7 +187,7 @@ class Portal {
           // @ts-ignore: dynamically invoke actor method to create component job
           const job: Theater.Job<unknown> = component[message.selector](...message.parameters)
           // play scene on theater stage for component job
-          running[sequence] = theater.play(function* () {
+          running[sequence] = theater.run(function* () {
             // wait for component job to signal completion
             const signal = yield job
             // clean up after completion 
@@ -196,7 +196,6 @@ class Portal {
             const response: Response = { sequence, signal }
             port.postMessage(response)
           })
-          running[sequence].run()
         }
       } else if ("signal" in message) {
         // process received response message
@@ -226,8 +225,8 @@ class Portal {
         if (!allocationExchange.isUnderflowing) {
           throw new Error(`illegal state for reservation of ${allocated} from ${otherId} at ${id()}`)
         }
-        // play scene on theater stage to produce the allocated id and unblock the consumer
-        theater.play(function* () { yield allocationExchange.produce(allocated) }).run()
+        // run a scene on theater stage to produce the allocated id and unblock the consumer
+        theater.run(function* () { yield allocationExchange.produce(allocated) })
       } else {
         // process received allocation message
         if (!kernel.isUnparented()) {

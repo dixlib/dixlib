@@ -4,6 +4,18 @@ declare module 'std.theater' {
   export default Theater
   /**
    * The theater service provides a JavaScript actor system.
+   * 
+   * The theater takes a lot of inspiration from the actor paradigm. However, it is also different in many ways.
+   * 
+   * * An actor reference is not a portable address. It is a JavaScript reference to the actual actor object.
+   * * Sending a message to an actor is achieved by invoking the corresponding method.
+   * * The progress of an actor message is tracked with an actor job.
+   * * Actor jobs convey the asynchronous result of an actor message.
+   * * Actors are essentially active objects that execute methods in their own thread of execution.
+   * 
+   * Each actor in the theater is supervised by another actor.
+   * The supervisor decides what the consequences of an actor mistake are.
+   * This mechanism allows the theater to dynamically adapt to new situations e.g., loss of network connections.
    */
   interface Theater {
     /**
@@ -68,6 +80,13 @@ declare module 'std.theater' {
      * @returns An inert job
      */
     play<T, P extends unknown[], This = unknown>(scenic: Theater.Scenic<T, P, This>, ...p: P): Theater.Job<T>
+    /**
+     * Run an extra scene on stage.
+     * @param scenic Scene code to execute
+     * @param p Parameters to pass to scene code
+     * @returns A running job
+     */
+    run<T, P extends unknown[], This = unknown>(scenic: Theater.Scenic<T, P, This>, ...p: P): Theater.Job<T>
     /**
      * Open the theater stage for a surprise act.
      * @param job Inert job to perform on stage

@@ -88,7 +88,10 @@ function createBootLoader(bundles: Loader.Bindings[]) {
         if (typeof aspectFilter !== "function" || aspectFilter(aspect)) {
           for (const id of bundles) {
             if (typeof bundleFilter !== "function" || bundleFilter(id)) {
-              yield new QueryResult(aspect, id, stack.get(id)?.aspects[aspect])
+              const serviceNames = stack.get(id)?.aspects[aspect]
+              if (serviceNames) {
+                yield new QueryResult(aspect, id, serviceNames)
+              }
             }
           }
         }
@@ -99,7 +102,10 @@ function createBootLoader(bundles: Loader.Bindings[]) {
         if (typeof bundleFilter !== "function" || bundleFilter(id)) {
           for (const aspect of aspects) {
             if (typeof aspectFilter !== "function" || aspectFilter(aspect)) {
-              yield new QueryResult(aspect, id, stack.get(id)?.aspects[aspect])
+              const serviceNames = stack.get(id)?.aspects[aspect]
+              if (serviceNames) {
+                yield new QueryResult(aspect, id, serviceNames)
+              }
             }
           }
         }

@@ -86,6 +86,7 @@ declare module 'std.future' {
     settle<T>(hints: Iterable<Future.Hint<T>>): Future.Cue<Future.Signal<T>[]>
     /**
      * Schedule effect for somebody that is committed to wait for a hint.
+     * This operation is intended for task schedulers, not regular applications.
      * @param hint Hint reveals signal
      * @param effect Process signal effects from hint, either immediately or asynchronously
      * @returns A rollback function or nothing when the effect was immediate

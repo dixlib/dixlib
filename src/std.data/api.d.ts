@@ -1,3 +1,9 @@
+interface ServiceAspects {
+  /**
+   * If true, a datatype module provides the bundled type definitions.
+   */
+  readonly typedefs?: boolean
+}
 declare module 'std.data' {
   export default Data
   /**
@@ -72,6 +78,38 @@ declare module 'std.data' {
      */
     equals<T extends Data.Value>(left: T, right: T): boolean
     /**
+     * Create list value.
+     * @param type List type
+     * @param members List members
+     * @returns A list value
+     * @throws If one of the list members does not obey the elementary type
+     */
+    list<T extends Data.Value>(type: Data.Type<Data.List<T>>, members: T[]): Data.List<T>
+    /**
+     * Create dictionary value.
+     * @param type Dictionary type
+     * @param members Dictionary members
+     * @returns A dictionary value
+     * @throws If one of the dictionary members does not obey the elementary type
+     */
+    dictionary<T extends Data.Value>(type: Data.Type<Data.Dictionary<T>>, members: Data.Table<T>): Data.Dictionary<T>
+    /**
+     * Create record value.
+     * @param type Record type
+     * @param members Record field members
+     * @returns A record value
+     * @throws If one of the record field members does not obey the field type
+     */
+    record<F extends Data.FieldValues>(type: Data.Type<Data.Record<F>>, members: F): Data.Record<F>
+    /**
+     * Create tuple value.
+     * @param type Tuple type
+     * @param members Tuple members
+     * @returns A tuple value
+     * @throws If one of the tuple members does not obey the type at that position
+     */
+    tuple<T extends Data.ValueSequence>(type: Data.Type<Data.Tuple<T>>, members: T): Data.Tuple<T>
+    /**
      * Parse source text of a type expression.
      * Grammar of type expressions in EBNF:
      * * TypeExpression ::= TypeExpr1 | Variable "=" TypeExpr1 (Variable "=" TypeExpr1)* TypeExpr1
@@ -92,7 +130,7 @@ declare module 'std.data' {
      * * decimal = natural number in decimal notation e.g., 321.
      * * quote  = qouted sentence e.g., "the quick brown fox"
      * * typename = name of type starts with a capital and contains at least one dot separator e.g., Std.List
-     * * selector = identifier or keyword that starts with a letter followed by digits and letters e.g., firstName
+     * * selector = identifier (or keyword) that starts with a letter followed by digits and letters e.g., firstName
      * @param text Source text of type expression
      * @param location Optional location of source text
      * @returns A type expression
@@ -100,11 +138,17 @@ declare module 'std.data' {
      */
     parseTypeExpression(text: string, location?: string): Data.TypeExpression
     /**
+     * Load type definitions of a service.
+     * @param serviceName Service name
+     * @returns Promise of loaded type definitions
+     */
+    loadTypeDefinitions(serviceName: string): Promise<Data.TypeDefinitions>
+    /**
      * Inflate a new data space.
-     * @param options Creation options for new space
+     * @param definitions Type definitions for data space
      * @returns A new data space
      */
-    inflate(options: Data.SpaceOptions): Data.Space
+    inflate(definitions: Data.TypeDefinitions): Data.Space
   }
   namespace Data {
     /**
@@ -115,6 +159,10 @@ declare module 'std.data' {
      * A wildcard value is defined.
      */
     type Wildcard = Literal | Composition
+    /**
+     * Reserved names of basic types.
+     */
+    type BasicNames = "boolean" | "int32" | "number" | "string"
     /**
      * A literal value is a primitive boolean, number or string.
      */
@@ -213,6 +261,8 @@ declare module 'std.data' {
        * @returns True if value is included, otherwise false
        */
       includes(v: Data.Value): v is T
+      // TODO: A type embeds a subtype? What about cyclic types e.g., Foo ::= [Foo]. 
+      // embeds(subtype: Data.Type<Data.Value>): boolean
       /**
        * Match a pattern on this type.
        * @param pattern Pattern to match
@@ -378,7 +428,7 @@ declare module 'std.data' {
        * @param reserved Reserved name of basic type e.g., "boolean"
        * @returns Output result
        */
-      basic?(expression: TypeExpression, p: P, reserved: string): O
+      basic?(expression: TypeExpression, p: P, reserved: BasicNames): O
       /**
        * Compute output result.
        * @param expression Literal input expression
@@ -489,15 +539,40 @@ declare module 'std.data' {
      * Type definitions provide names for type expressions.
      */
     type TypeDefinitions = { readonly [name: string]: TypeExpression }
-    interface SpaceOptions {
-      readonly definitions: TypeDefinitions
-    }
-    interface Space {
-      readonly definitions: TypeDefinitions
-      evaluate<T extends Value = Value>(expression: TypeExpression | string): Type<T>
-      export<T extends Value = Value>(value: T, expression?: TypeExpression | string): Structure
-      import<T extends Value = Value>(structure: Structure, expression?: TypeExpression | string): T
-    }
+    /** 
+     * A JSON structure for the transport of data values.
+     */
     type Structure = null | boolean | number | string | Structure[] | { [key: string]: Structure }
+    /**
+     * A space facilitates import and export of data values.
+     */
+    interface Space {
+      /**
+       * The type definitions of this space.
+       */
+      readonly definitions: TypeDefinitions
+      /**
+       * Evaluate a type expression to a type.
+       * Type evaluation is referentially transparent i.e., the same expression always evaluates to the same type.
+       * @param expressionSource Type expression or source text of a type expression
+       * @returns The evaluated type
+       * @throws An error if the expression cannot be evaluated
+       */
+      evaluate<T extends Value = Value>(expressionSource: TypeExpression | string): Type<T>
+      /**
+       * Export JSON structure of a value.
+       * @param expressionSource Type expression that evaluates the type of value, or source text of this expression
+       * @param value Value to export
+       * @returns A JSON structure
+       */
+      export<T extends Value = Value>(expressionSource: TypeExpression | string, value: T): Structure
+      /**
+       * Import value from a JSON structure.
+       * @param expressionSource Type expression that evaluates the type of value, or source text of this expression
+       * @param structure JSON structure to import
+       * @returns A value
+       */
+      import<T extends Value = Value>(expressionSource: TypeExpression | string, structure: Structure): T
+    }
   }
 }

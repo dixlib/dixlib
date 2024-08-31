@@ -29,6 +29,12 @@ export function play<T, P extends unknown[]>(scenic: Theater.Scenic<T, P>, ...p:
   return new Gig(facade.expose(janitor), anonymous, [scenic, p]).job as Theater.Job<T>
 }
 
+export function run<T, P extends unknown[]>(scenic: Theater.Scenic<T, P>, ...p: P): Theater.Job<T> {
+  const job = new Gig(facade.expose(janitor), anonymous, [scenic, p]).job
+  job.run()
+  return job as Theater.Job<T>
+}
+
 export function cast<A extends Actor, P extends unknown[]>(casting: Theater.Casting<Actor, A, P>): A {
   return facade.expose(troupe).cast(
     casting as unknown as Theater.Casting<Theater.Actor, Theater.Actor, unknown[]>
@@ -107,7 +113,7 @@ export class Agent extends Destiny {
     }
     if (disposeRole !== doNothing) {
       // clean up with janitor
-      play(disposeRole.bind(role)).run()
+      run(disposeRole.bind(role))
     }
     if (this.#team!.size) {
       throw new Error("team should be empty after reset")
@@ -294,13 +300,13 @@ class DirectorRole extends Role<Director>()(ImmortalRole) implements Theater.Scr
       return "forgive"
     }
     // warn about incidents of troupe actor (only happens when a toplevel actor escalates a blooper)
-    function unexpected({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
+    function escalation({ blooper, selector, parameters }: Theater.Incident<Actor>): Theater.Verdict {
       news.warn(`escalation incident in "%s"/%d %O`, String(selector), parameters.length, blooper)
       return "forgive"
     }
     return [
       this.castChild<Janitor, []>({ Role: ImmortalRole, p: [], guard: background }),
-      this.castChild<Troupe, []>({ Role: ImmortalRole, p: [], guard: unexpected }),
+      this.castChild<Troupe, []>({ Role: ImmortalRole, p: [], guard: escalation }),
     ]
   }
 }
