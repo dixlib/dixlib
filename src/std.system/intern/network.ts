@@ -129,15 +129,17 @@ class RootRole extends ContainerRole<System.Root>()(Object) implements Theater.S
         p: [0, "logger"],
         guard: () => "forgive"
       })
-      // every system has a logger component at path "logger"
+    // every system has a logger component at path "logger"
     this.assignComponent("logger", logger)
-    this.playScene(function* () {
+    const background = this.playScene(function* () {
       // make sure the system consumes news items and reports them to the logger 
       for (; ;) {
         const message = yield* theater.when(news.consume())
-        yield* theater.when(logger.report({ ...message, origin: [...systemAncestry] }))
+        const origin = systemAncestry.slice(0, systemAncestry.length - (systemAncestry.length > 1 ? 1 : 0))
+        yield* theater.when(logger.report({ ...message, origin }))
       }
-    }).run()
+    })
+    background.run()
   }
   @theater.Play public *ancestry(): Theater.Scene<[number, ...number[]]> { return ancestry() }
   @theater.Play public *id(): Theater.Scene<number> { return id() }

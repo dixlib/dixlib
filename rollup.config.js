@@ -1,4 +1,4 @@
-import { glob } from "glob"
+import { glob } from "glob"  // switch to glob from node:fs/promises when it's stable
 import { extname, relative } from "node:path"
 import terser from "@rollup/plugin-terser"
 import typescript from "@rollup/plugin-typescript"
@@ -11,6 +11,7 @@ export default {
     "src/*/intern.ts",
     "src/*/worker.ts",
     "src/*/main.ts",
+    "src/*/datatype.ts",
   ]),
   output: {
     sourcemap: true,
@@ -19,7 +20,7 @@ export default {
   },
   plugins: [
     typescript(),
-    terser()
+    // terser()
   ],
 }
 

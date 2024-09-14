@@ -22,6 +22,21 @@ declare module 'std.kernel' {
      * @returns A promise of the new child worker
      */
     startWorker<Init>(path: URL, initial: Init, transfer?: Kernel.Transferable[]): Promise<Kernel.Worker>
+    /**
+     * Decode binary data from a data URI.
+     * A data URI encodes binary data using Base64 encoding.
+     * @param encoded The text of a data URI with binary data
+     * @returns A promise of the binary data
+     */
+    decodeBase64URI(encoded: string): Promise<Uint8Array>
+    /**
+     * Encode binary data in a data URI.
+     * A data URI encodes binary data using Base64 encoding.
+     * @param decoded Binary data
+     * @param type Optional MIME type (defaults to application/octet-stream)
+     * @returns A promise of the data URI text
+     */
+    encodeBase64URI(decoded: Uint8Array, type?: string): Promise<string>
   }
   namespace Kernel {
     /**

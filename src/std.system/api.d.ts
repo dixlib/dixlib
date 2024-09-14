@@ -33,7 +33,7 @@ declare module 'std.system' {
     /**
      * Obtain the ancestry chain.
      * The chain identifies this system, the parent system, the grandparent system, ..., up to the top system.
-     * @returns An array with numbers 
+     * @returns An array with numbers
      */
     ancestry(): [number, ...number[]]
     /**

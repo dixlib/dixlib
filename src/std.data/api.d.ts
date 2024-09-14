@@ -261,8 +261,6 @@ declare module 'std.data' {
        * @returns True if value is included, otherwise false
        */
       includes(v: Data.Value): v is T
-      // TODO: A type embeds a subtype? What about cyclic types e.g., Foo ::= [Foo]. 
-      // embeds(subtype: Data.Type<Data.Value>): boolean
       /**
        * Match a pattern on this type.
        * @param pattern Pattern to match

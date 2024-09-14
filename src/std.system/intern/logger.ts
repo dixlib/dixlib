@@ -7,7 +7,8 @@ import { theater } from "../extern.js"
 export class LoggerRole extends theater.Role<System.Logger>()(Object) implements Theater.Script<System.Logger> {
 
   @theater.Play public *report<P extends unknown[]>(message: System.LogMessage<P>): Theater.Scene<void> {
-    console[message.severity](`[${message.origin.join()}] ${message.format}`, ...message.parameters)
+    const format = `[${message.origin.join(":")}@${Math.round(message.timestamp)}ms] ${message.format}`
+    console[message.severity](format, ...message.parameters)
   }
 }
 

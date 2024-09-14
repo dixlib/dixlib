@@ -8,6 +8,7 @@ export interface Startup<Init> {
 }
 // --- JavaScript ---
 import { Worker, isMainThread } from "node:worker_threads"
+import { Buffer } from "node:buffer"
 
 export function isUnparented() {
   return isMainThread
@@ -52,6 +53,15 @@ export async function startWorker<Init>(
     terminate()
     throw new Error("worker termination", { cause: problem })
   }
+}
+
+export function decodeBase64URI(encoded: string): Promise<Uint8Array> {
+  return Promise.resolve(Buffer.from(encoded.substring(encoded.indexOf(",") + 1), "base64"))
+}
+
+export function encodeBase64URI(decoded: Uint8Array, type = "application/octet-stream"): Promise<string> {
+  return type.indexOf(",") >= 0 ? Promise.reject(new Error("invalid MIME type")) :
+    Promise.resolve(`data:${type};base64,` + Buffer.from(decoded).toString("base64"))
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //

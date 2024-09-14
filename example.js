@@ -11,7 +11,7 @@ try {
     loader.provide('std.future'),
     loader.provide('std.theater'),
   ])
-  news.debug("services: %O %O %O", data, future, theater)
+  news.debug("services: %O %O %O %O", loader, data, future, theater)
   const subsystem = theater.cast({ Role: system.Subsidiary(), p: [[]], guard: () => "punish" })
   const id = await subsystem.id()
   news.info("started subsystem (%d)", id)
@@ -22,7 +22,7 @@ try {
     format: "Hello from sublogger",
     parameters: [],
     timestamp: now,
-    origin: [id, 0]
+    origin: [id]
   })
   theater.run(function* () {
     yield future.timeout(2_000)

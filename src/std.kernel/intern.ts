@@ -60,6 +60,22 @@ export async function startWorker<Init>(
   }
 }
 
+export async function decodeBase64URI(encoded: string): Promise<Uint8Array> {
+  // see https://developer.mozilla.org/en-US/docs/Glossary/Base64
+  const response = await fetch(encoded)
+  return new Uint8Array(await response.arrayBuffer())
+}
+
+export function encodeBase64URI(decoded: Uint8Array, type = "application/octet-stream"): Promise<string> {
+  // see https://developer.mozilla.org/en-US/docs/Glossary/Base64
+  const { promise, resolve, reject } = Promise.withResolvers<string>()
+  const reader = new FileReader()
+  reader.onload = () => resolve(reader.result as string)
+  reader.onerror = () => reject(reader.error)
+  reader.readAsDataURL(new File([decoded], "", { type }))
+  return promise
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 const workerScript = new URL("./worker.js", import.meta.url)
 // use message channel to schedule macrotasks
