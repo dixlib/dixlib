@@ -1,8 +1,12 @@
-import { glob } from "glob"  // switch to glob from node:fs/promises when it's stable
+import { glob } from "node:fs/promises"
 import { extname, relative } from "node:path"
+import json from "@rollup/plugin-json"
 import terser from "@rollup/plugin-terser"
 import typescript from "@rollup/plugin-typescript"
 
+/***
+ * @type {import("rollup").RollupOptions}
+ */
 export default {
   input: await entryPoints([
     "src/boot.ts",
@@ -13,24 +17,15 @@ export default {
     "src/*/main.ts",
     "src/*/datatype.ts",
   ]),
-  output: {
-    sourcemap: true,
-    format: "es",
-    dir: "build",
-  },
-  plugins: [
-    typescript(),
-    terser()
-  ],
+  output: { sourcemap: true, format: "es", dir: "build" },
+  plugins: [typescript(), terser({ mangle: true }), json()],
 }
 
 async function entryPoints(patterns) {
-  return Object.fromEntries(
-    (await Promise.all(patterns.map(pattern => glob(pattern)))).flat().map(path => [
-      // key strips src/ and file extension from file path
-      relative("src", path.substring(0, path.length - extname(path).length)),
-      // value is file path to entry point
-      path,
-    ])
-  )
+  const result = {}
+  for await (const path of glob(patterns)) {
+    // key strips src/ and file extension from file path; value is file path to entry point
+    result[relative("src", path.substring(0, path.length - extname(path).length))] = path
+  }
+  return result
 }

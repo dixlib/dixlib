@@ -1,18 +1,17 @@
-// --- JavaScript ---
-export { isValue } from "./intern/value.js"
-export { isType } from "./intern/type.js"
-export { isTypeExpression } from "./intern/language.js"
-export { isComposition } from "./intern/value.js"
-export { isList } from "./intern/value.js"
-export { isDictionary } from "./intern/value.js"
-export { isRecord } from "./intern/value.js"
-export { isTuple } from "./intern/value.js"
-export { typeOf } from "./intern/type.js"
-export { equals } from "./intern/value.js"
-export { list } from "./intern/value.js"
-export { dictionary } from "./intern/value.js"
-export { record } from "./intern/value.js"
-export { tuple } from "./intern/value.js"
-export { parseTypeExpression } from "./intern/language.js"
-export { loadTypeDefinitions } from "./intern/typedefs.js"
+export { isTypeExpression, parseTypeExpression } from "./intern/language.js"
 export { inflate } from "./intern/space.js"
+export { isType, typeOf } from "./intern/type.js"
+export { loadTypeDefinitions } from "./intern/typedefs.js"
+export {
+  dictionary,
+  equals,
+  isComposition,
+  isDictionary,
+  isList,
+  isRecord,
+  isTuple,
+  isValue,
+  list,
+  record,
+  tuple,
+} from "./intern/value.js"

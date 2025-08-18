@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
@@ -12,26 +12,31 @@
   },
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@9.10.0",
   "module": "./index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./rollup.config.js": "./rollup.config.js"
   },
   "types": "./src/api",
   "scripts": {
-    "compile": "tsc --build --verbose && rollup --config && pnpm -r compile",
-    "serve": "pnpm compile && ws --http2 --log.format dev"
+    "compile": "tsc --build --verbose && rollup --config && npm run compile --workspaces",
+    "format": "npx @biomejs/biome format --write --verbose",
+    "lint": "npx @biomejs/biome check --verbose",
+    "serve": "npm run compile && ws --http2 --log.format dev"
   },
   "engines": {
-    "node": ">=22.8.0"
+    "node": ">=24.6.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-typescript": "^11.1.6",
-    "glob": "^11.0.0",
+    "@rollup/plugin-typescript": "^12.1.4",
     "local-web-server": "^5.4.0",
-    "rollup": "^4.21.3",
-    "tslib": "^2.7.0",
-    "typescript": "^5.6.2"
-  }
+    "rollup": "^4.46.2",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.2"
+  },
+  "workspaces": ["platform/*"]
 }

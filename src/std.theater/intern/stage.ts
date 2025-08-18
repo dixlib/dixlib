@@ -1,150 +1,86 @@
-// --- TypeScript ---
-import type { Agent } from "./agent.ts"
-import type { Gig } from "./gig.ts"
-// immediate interrupts are handled synchronously
-// fast interrupts are handled in a microtask
-// normal interrupts are handled in a macrotask
-type Priority = "immediate" | "fast" | "normal"
-// --- JavaScript ---
-import { kernel, loop } from "../extern.js"
-import { ExclusiveStatus } from "./lifecycle.js"
+import { kernel } from "../extern.js"
+import type { ActorObj } from "./actor.js"
 
-export function isShowing() {
-  return !!handling
-}
-
-export function negotiate(agent: Agent) {
-  if (agent.fate) {
-    throw new Error("negotiated actor must be alive")
+// move actor to its current stage status
+export function schedule(actorObj: ActorObj) {
+  if (actorObj.isGhost) {
+    throw new Error("scheduled actor must be alive")
   }
-  if (agent.isSuspended) {
-    suspended.add(agent)
-  } else if (agent.workload.size > 0) {
-    ready.add(agent)
-    if (!handling && !willEntertain) {
-      // give stage to ready agent in microtask (i.e. in current cycle of the event loop)
+  if (actorObj.isSuspended) {
+    actorObj.become(suspended)
+  } else if (actorObj.isBlocked) {
+    actorObj.become(blocked)
+  } else if (actorObj.isReady) {
+    actorObj.become(ready)
+    if (!showing && !willEntertain) {
+      // give stage to ready actor in a microtask (i.e. in current cycle of the event loop)
       willEntertain = true
-      cause("fast", entertainment())
+      queueMicrotask(microEntertainment)
     }
-  } else if (agent.agenda.size > 0) {
-    waiting.add(agent)
   } else {
-    idle.add(agent)
+    actorObj.become(idle)
   }
 }
 
-export function showing() {
-  const { first } = active
-  if (!first) {
-    throw new Error("nothing is currently showing")
+// either obtain active actor object in some unknown role, or fail when theater is not showing this entertainment
+export function busyShowing(it: unknown) {
+  const [actorObj] = active
+  if (actorObj?.isPlaying(it)) {
+    return actorObj
+  } else {
+    throw new Error("not busy showing expected entertainment")
   }
-  return first
-}
-
-// open curtain to perform synchronous suprise act on stage
-export function performSolo(gig: Gig) {
-  cause("immediate", loop.over([gig]))
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-// one active gig on stage when curtain is open
-const active = new ExclusiveStatus<Gig>("active")
-// one busy agent on stage when curtain is open
-const busy = new ExclusiveStatus<Agent>("busy")
-// suspended agents cannot work on stage
-const suspended = new ExclusiveStatus<Agent>("suspended")
-// ready agents want to work on stage
-const ready = new ExclusiveStatus<Agent>("ready")
-// waiting agents have nothing to do, but they anticipate to work in the future
-const waiting = new ExclusiveStatus<Agent>("waiting")
-// idle agents have nothing to do and they also have nothing planned
-const idle = new ExclusiveStatus<Agent>("idle")
-// interrupt occurence that's being handled
-let handling: Interrupt | undefined = void 0
+// one active actor on stage
+const active = new Set<ActorObj>()
+// suspended actors are prevented from processing messages
+const suspended = new Set<ActorObj>()
+// blocked actors are waiting on a cue to reveal a signal
+const blocked = new Set<ActorObj>()
+// ready actors want to go on stage
+const ready = new Set<ActorObj>()
+// idle actors have nothing to do
+const idle = new Set<ActorObj>()
+// true if showing entertainment on stage
+let showing = false
 // true if future entertainment is pending
 let willEntertain = false
-// handle interrupt occurence
-function handleInterrupt(interrupt: Interrupt, playlist: IterableIterator<Gig>) {
-  if (handling) {
-    throw new Error("cannot nest interrupt occurences")
+// open curtain and provide entertainment as long as the budget allows
+function showEntertainment(budget: number) {
+  if (showing) {
+    throw new Error("cannot nest theater entertainment")
   }
-  handling = interrupt
+  showing = true
+  willEntertain = false
   try {
-    // open curtain and process playlist
-    for (const gig of playlist) {
-      if (active.size || busy.size) {
-        throw new Error("stage must be empty when taking stage")
+    const start = performance.now()
+    while (ready.size > 0 && Math.max(0, start + budget - performance.now()) > 0) {
+      if (active.size > 0) {
+        throw new Error("theater stage must be empty when taking stage")
       }
-      active.add(gig)
-      busy.add(gig.agent)
-      gig.takeStage()
-      // break when budget has been exhausted
-      if (interrupt.budget === 0) {
-        if (active.size || busy.size) {
-          throw new Error("stage must be empty when leaving stage")
-        }
-        break
+      // first ready actor becomes active performer on stage
+      const [performer] = ready
+      performer.become(active)
+      performer.takeStage()
+      if (active.size > 0) {
+        throw new Error("theater stage must be empty when leaving stage")
       }
     }
   } finally {
     active.clear()
-    busy.clear()
-    handling = void 0
+    showing = false
   }
   // this code will only execute on a clean exit
-  if (ready.size > 0 && !willEntertain) {
-    // give stage to ready agent in macrotask (i.e. in a future cycle of the event loop)
+  if (ready.size > 0) {
+    // give stage to ready actor in macrotask (i.e. in a future cycle of the event loop)
     willEntertain = true
-    cause("normal", entertainment())
+    // 10 ms budget for macro entertainmet
+    kernel.queueMacrotask(macroEntertainment)
   }
 }
-// budgets (in ms) for an interrupt occurence with a certain priority
-const immediateBudget = 4, fastBudget = 6, normalBudget = 10
-// cause an interrupt and handle it accordingly
-function cause(priority: Priority, playlist: IterableIterator<Gig>) {
-  const start = performance.now()
-  switch (priority) {
-    case "immediate":
-      // execute synchronous handler
-      return handleInterrupt(new Interrupt("immediate", start, start, immediateBudget), playlist)
-    case "fast":
-      const microtask = () =>
-        handleInterrupt(new Interrupt("fast", start, performance.now(), fastBudget), playlist)
-      // schedule microtask handler
-      return queueMicrotask(microtask)
-    default:
-      const macrotask = () =>
-        handleInterrupt(new Interrupt("normal", start, performance.now(), normalBudget), playlist)
-      // schedule macrotask handler
-      return kernel.queueMacrotask(macrotask)
-  }
-}
-// show regular entertainment on stage, i.e. with gigs from ready agents
-function* entertainment() {
-  willEntertain = false
-  for (let agent: Agent | undefined; (agent = ready.first);) {
-    const { first } = agent.workload
-    if (!first) {
-      throw new Error("ready actor with empty workload")
-    }
-    yield first
-  }
-}
-// interrupt occurence with fixed time budget
-class Interrupt {
-  #priority: Priority
-  #start: number
-  #entry: number
-  #budget: number
-  constructor(priority: Priority, start: number, entry: number, budget: number) {
-    this.#priority = priority
-    this.#start = start
-    this.#entry = entry
-    this.#budget = budget
-  }
-  public get priority() { return this.#priority }
-  public get start() { return this.#start }
-  public get latency() { return this.#entry - this.#start }
-  public get budget() { return Math.max(0, this.#entry + this.#budget - performance.now()) }
-  public get excess() { return Math.max(0, performance.now() - this.#budget - this.#entry) }
-}
+// 6 ms budget for micro entertainmet
+const microEntertainment = () => showEntertainment(6)
+// 10 ms budget for macro entertainmet
+const macroEntertainment = () => showEntertainment(10)

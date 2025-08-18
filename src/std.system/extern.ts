@@ -1,24 +1,34 @@
-// --- TypeScript ---
-import type Future from 'std.future'
-import type Fx from 'std.fx'
-import type Kernel from 'std.kernel'
-import type Loader from 'std.loader'
-import type Loop from 'std.loop'
-import type News from 'std.news'
-import type System from 'std.system'
-import type Theater from 'std.theater'
+import type { Contract, Service } from "dixlib"
 
-// --- JavaScript ---
-export default async ({ use }: Contract<System>): Promise<System> => {
-  [future, fx, kernel, loader, loop, news, theater] = await use(
-    'std.future',
-    'std.fx',
-    'std.kernel',
-    'std.loader',
-    'std.loop',
-    'std.news',
-    'std.theater'
+export default async ({ use }: Contract<"std.system">): Promise<Service["std.system"]> => {
+  ;[agency, concurrency, fn, future, fx, kernel, loader, news, theater] = await use(
+    "std.agency",
+    "std.concurrency",
+    "std.fn",
+    "std.future",
+    "std.fx",
+    "std.kernel",
+    "std.loader",
+    "std.news",
+    "std.theater"
   )
   return import("./intern.js")
 }
-export let future: Future, fx: Fx, kernel: Kernel, loader: Loader, loop: Loop, news: News, theater: Theater
+
+export let agency: Service["std.agency"]
+
+export let concurrency: Service["std.concurrency"]
+
+export let fn: Service["std.fn"]
+
+export let future: Service["std.future"]
+
+export let fx: Service["std.fx"]
+
+export let kernel: Service["std.kernel"]
+
+export let loader: Service["std.loader"]
+
+export let news: Service["std.news"]
+
+export let theater: Service["std.theater"]

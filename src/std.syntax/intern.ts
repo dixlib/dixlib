@@ -1,15 +1,14 @@
-// --- TypeScript ---
-import type Syntax from 'std.syntax'
-// --- JavaScript ---
-import { loop } from "./extern.js"
+import type Syntax from "std.syntax"
 
 export function createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<keyof L & string> {
   return new Lexicon<L>(patterns)
 }
 
-export function createParser<Root extends Syntax.Node, N extends string>(
-  { lexicon, insignificance, parseRoot }: Syntax.Language<Root, N>
-): Syntax.Parser<Root> {
+export function createParser<Root extends Syntax.Node, N extends string>({
+  lexicon,
+  insignificance,
+  parseRoot,
+}: Syntax.Language<Root, N>): Syntax.Parser<Root> {
   // convert arrays of string to more convenient sets of strings for scanners
   const ignore = new Set((insignificance?.ignore ?? []).map(name => lexicon.kind[name]))
   const gather = new Set((insignificance?.gather ?? []).map(name => lexicon.kind[name]))
@@ -25,7 +24,8 @@ function onDescendingLength(left: string, right: string) {
   return right.length - left.length
 }
 // special token kinds
-const mismatch = Symbol("invalid character"), terminator = Symbol("source text terminator")
+const mismatch = Symbol("invalid character")
+const terminator = Symbol("source text terminator")
 // lexicon matches patterns in source texts
 class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<keyof L & string> {
   readonly #kinds: { [Name in keyof L]: symbol }
@@ -37,7 +37,9 @@ class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<keyof L & str
     const testers: { [name: string]: Syntax.PatternTester } = Object.create(null)
     for (const name in lexicon) {
       // convert all pattern definitions to tester functions
-      patterns[kinds[name] = Symbol(name)] = name
+      const kind = Symbol(name)
+      kinds[name] = kind
+      patterns[kind] = name
       const definition = lexicon[name]
       if (typeof definition === "function") {
         testers[name] = definition
@@ -63,23 +65,25 @@ class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<keyof L & str
         throw new Error(`unknown lexicon definition for pattern "${name}"`)
       }
     }
-    // make sure public kinds and patterns are immutable
+    // make sure kinds and patterns are immutable
     this.#kinds = Object.freeze(kinds)
     this.#patterns = Object.freeze(patterns)
     this.#testers = testers
   }
-  public get kind() {
+  get kind() {
     return this.#kinds
   }
-  public get pattern() {
+  get pattern() {
     return this.#patterns
   }
-  public *tokenize(text: string) {
-    const testers = this.#testers, kinds = this.#kinds
+  *tokenize(text: string) {
+    const testers = this.#testers
+    const kinds = this.#kinds
     let start = 0
     matchToken: while (start < text.length) {
       for (const name in testers) {
-        const tester = testers[name], stop = tester(text, start)
+        const tester = testers[name]
+        const stop = tester(text, start)
         if (stop > start) {
           yield { kind: kinds[name], start, stop }
           start = stop
@@ -101,16 +105,16 @@ class Scanner<N extends string> implements Syntax.Scanner {
   // zero or more unconsumed tokens ahead
   readonly #ahead: Syntax.Token[]
   // loop over significant tokens
-  #significant: IterableIterator<Syntax.Token>
+  #significant: IteratorObject<Syntax.Token>
   #peekFurther() {
     const result = this.#significant.next()
     if (result.done) {
-      this.#significant = loop.over()
+      this.#significant = emptyIterator
       return false
     } else {
       const token = result.value
       if (token.kind === mismatch) {
-        throw this.failure("token mismatch on", token)
+        throw new Error(this.failure("token mismatch on", token))
       }
       // one more token seen ahead
       this.#ahead.push(result.value)
@@ -133,18 +137,22 @@ class Scanner<N extends string> implements Syntax.Scanner {
   }
   constructor(lexicon: Syntax.Lexicon<N>, ignore: Set<symbol>, gather: Set<symbol>, source: Syntax.Source) {
     this.#lexicon = lexicon
-    const { text } = this.#source = source
+    this.#source = source
+    const { text } = source
     // first line starts at offset 0
-    const re = /\r\n|\r|\n|\v|\f|\u2028|\u2029/g, offsets = this.#lineOffsets = [0]
-    for (let match: RegExpExecArray | null; (match = re.exec(source.text));) {
+    const re = /\r\n|\r|\n|\v|\f|\u2028|\u2029/g
+    this.#lineOffsets = [0]
+    let match = re.exec(text)
+    while (match) {
       // add offsets where previous line stops and next line starts
-      offsets.push(match.index, re.lastIndex)
+      this.#lineOffsets.push(match.index, re.lastIndex)
+      match = re.exec(text)
     }
     // last line stops at text length
-    offsets.push(text.length)
+    this.#lineOffsets.push(text.length)
     this.#gathered = []
     this.#ahead = []
-    this.#significant = loop.filter(lexicon.tokenize(text), token => {
+    this.#significant = lexicon.tokenize(text).filter(token => {
       const { kind } = token
       if (ignore.has(kind)) {
         return false
@@ -156,27 +164,29 @@ class Scanner<N extends string> implements Syntax.Scanner {
       return true
     })
   }
-  public get lineCount() {
+  get lineCount() {
     return this.#lineOffsets.length / 2
   }
-  public get atEnd() {
+  get atEnd() {
     return this.#ahead.length === 0 && !this.#peekFurther()
   }
-  public get lookahead() {
+  get lookahead() {
     if (!this.atEnd) {
       return this.#ahead[0]
     }
     const n = this.#source.text.length
     return { kind: terminator, start: n, stop: n }
   }
-  public get gathered(): IterableIterator<Syntax.Token> {
-    return loop.over(this.#gathered)
+  get gathered(): IterableIterator<Syntax.Token> {
+    return this.#gathered.values()
   }
-  public failure(message: string, token: Syntax.Token) {
-    const { start } = token, { location } = this.#source, { line, column } = this.position(start)
-    return new Error(`${location ?? "literal text"} ${line},${column}: ${message} "${this.extract(token, 15)}"`)
+  failure(message: string, token: Syntax.Token) {
+    const { start } = token
+    const { location } = this.#source
+    const { line, column } = this.position(start)
+    return `${location ?? "literal text"} ${line},${column}: ${message} "${this.extract(token, 15)}"`
   }
-  public peek(...expectations: Syntax.Expectation[]) {
+  peek(...expectations: Syntax.Expectation[]) {
     while (this.#ahead.length < expectations.length) {
       if (!this.#peekFurther()) {
         return false
@@ -189,28 +199,29 @@ class Scanner<N extends string> implements Syntax.Scanner {
     }
     return true
   }
-  public accept(expectation: Syntax.Expectation) {
+  accept(expectation: Syntax.Expectation) {
     if (!this.atEnd && this.#checkToken(expectation, this.#ahead[0])) {
       return this.#ahead.shift()
     }
   }
-  public expect(expectation: Syntax.Expectation) {
+  expect(expectation: Syntax.Expectation) {
     const token = this.accept(expectation)
     if (!token) {
       const pattern = typeof expectation === "symbol" ? this.#lexicon.pattern[expectation] : `"${expectation}"`
-      throw this.failure(`${pattern} expected but found`, this.lookahead)
+      throw new Error(this.failure(`${pattern} expected but found`, this.lookahead))
     }
     return token
   }
-  public extract({ start, stop }: Syntax.Token, max = stop - start) {
+  extract({ start, stop }: Syntax.Token, max = stop - start) {
     return this.#source.text.substring(start, Math.min(start + max, stop))
   }
-  public position(offset: number): Syntax.Position {
+  position(offset: number): Syntax.Position {
     if (offset < 0 || offset > this.#source.text.length) {
       throw new Error(`invalid source text offset ${offset}`)
     }
     const offsets = this.#lineOffsets
-    let bottom = 0, top = offsets.length / 2
+    let bottom = 0
+    let top = offsets.length / 2
     do {
       const probe = Math.floor((bottom + top) / 2)
       if (offset < offsets[2 * probe]) {
@@ -219,15 +230,19 @@ class Scanner<N extends string> implements Syntax.Scanner {
         bottom = probe + 1
       }
     } while (bottom < top)
-    const ix = 2 * bottom - 2, lineOffset = offsets[ix]
+    const ix = 2 * bottom - 2
+    const lineOffset = offsets[ix]
     return { line: bottom, column: Math.min(offset - lineOffset, offsets[ix + 1] - lineOffset) + 1 }
   }
-  public extractLine(line: number, max = Infinity): string {
-    const offsets = this.#lineOffsets, ix = (line - 1) * 2
+  extractLine(line: number, max = Infinity): string {
+    const offsets = this.#lineOffsets
+    const ix = (line - 1) * 2
     if (~~ix !== ix || ix < 0 || ix >= offsets.length) {
       throw new Error(`invalid line number ${line} to extract from source`)
     }
-    const start = offsets[ix], stop = offsets[ix + 1]
+    const start = offsets[ix]
+    const stop = offsets[ix + 1]
     return this.#source.text.substring(start, Math.min(start + max, stop))
   }
 }
+const emptyIterator = [].values()

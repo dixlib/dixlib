@@ -1,21 +1,24 @@
-declare module 'std.kernel' {
+declare module "std.kernel" {
   export default Kernel
   /**
-   * The operations of the kernel service are nonstandard JavaScript primitives. 
+   * The operations of the kernel service are nonstandard JavaScript primitives.
    */
   interface Kernel {
     /**
-     * Is the running JavaScript worker not controlled by a parent?
-     * @returns True for a parentless JavaScript worker, otherwise false
+     * Is the running JavaScript worker not supervised by a parent worker?
+     *
+     * @returns True for an unsupervised JavaScript worker, otherwise false
      */
-    isUnparented(): boolean
+    isUnsupervised(): boolean
     /**
-     * Schedule a macrotask in a future cycle of the event loop. 
+     * Schedule a macrotask in a future cycle of the event loop.
+     *
      * @param macrotask Code to execute in macrotask
      */
     queueMacrotask(macrotask: () => void): void
     /**
      * Start a new isolated child worker.
+     *
      * @param path Path to main module
      * @param initial Initial data to clone and to pass over to the child
      * @param transfer Optional list of transferables
@@ -24,14 +27,18 @@ declare module 'std.kernel' {
     startWorker<Init>(path: URL, initial: Init, transfer?: Kernel.Transferable[]): Promise<Kernel.Worker>
     /**
      * Decode binary data from a data URI.
+     *
      * A data URI encodes binary data using Base64 encoding.
+     *
      * @param encoded The text of a data URI with binary data
      * @returns A promise of the binary data
      */
     decodeBase64URI(encoded: string): Promise<Uint8Array>
     /**
      * Encode binary data in a data URI.
+     *
      * A data URI encodes binary data using Base64 encoding.
+     *
      * @param decoded Binary data
      * @param type Optional MIME type (defaults to application/octet-stream)
      * @returns A promise of the data URI text
@@ -42,7 +49,7 @@ declare module 'std.kernel' {
     /**
      * NodeJS type definitions (@types/node) are incompatible with webworker lib in TypeScript.
      */
-    type MessagePort = typeof MessagePort["prototype"]
+    type MessagePort = (typeof MessagePort)["prototype"]
     /**
      * NodeJS type definitions (@types/node) are incompatible with webworker lib in TypeScript.
      */
@@ -65,7 +72,7 @@ declare module 'std.kernel' {
      */
     interface Main<Init> {
       /**
-       * Initial data from parent. 
+       * Initial data from parent.
        */
       readonly initial: Init
       /**

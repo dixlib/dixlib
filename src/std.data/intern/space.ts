@@ -1,6 +1,4 @@
-// --- TypeScript ---
-import type Data from 'std.data'
-// --- JavaScript ---
+import type Data from "std.data"
 import { news } from "../extern.js"
 import { parseTypeExpression, substituteTypeExpressions } from "./language.js"
 import {
@@ -17,11 +15,18 @@ import {
   swapDummy,
   tuple,
   union,
-  wildcard
+  wildcard,
 } from "./type.js"
 
-export function inflate(definitions: Data.TypeDefinitions): Data.Space {
-  return new Space(definitions)
+export async function inflate(definitions: Data.TypeDefinitions): Promise<Data.Space> {
+  const unique = []
+  for (const key of Object.keys(definitions).sort()) {
+    const definition = definitions[key]
+    unique.push(key, "=", definition.text, "\n")
+  }
+  // asynchronously compute SHA-1 hashcode (presumed unique but not in a cryptographic application)
+  const hashcode = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(unique.join("")))
+  return new Space(definitions, hashcode)
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
@@ -42,35 +47,35 @@ class Evaluation {
     this.#pending = new Map()
     this.#depth = 0
   }
-  public get type(): Data.Type<Data.Value> {
+  get type(): Data.Type<Data.Value> {
     const type = this.#rootExpression.match(evaluator, this)
     if (this.#pending.size > 0) {
       throw new Error(this.failure("with remaining pending expression(s)"))
     }
     return type
   }
-  public failure(message: string) {
+  failure(message: string) {
     return `internal error ${message} in evaluation of ${this.#rootExpression.text}`
   }
-  public remember(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
+  remember(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
     if (this.#cache.has(expression) && this.#cache.get(expression) !== type) {
       throw new Error(this.failure(`with cache conflict for expression ${expression.text}`))
     }
     this.#cache.set(expression, type)
     return type
   }
-  public introduceDummy(expression: Data.TypeExpression) {
+  introduceDummy(expression: Data.TypeExpression) {
     this.#pending.set(expression, createDummy())
   }
-  public rememberDummyAs(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
-    const dummyType = this.#pending.get(expression)!
+  rememberDummyAs(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
+    const dummyType = this.#pending.get(expression) as Data.Type<Data.Value>
     if (!this.#pending.delete(expression)) {
       throw new Error(this.failure("while swapping dummy type"))
     }
     this.#cache.set(expression, dummyType)
     return swapDummy(dummyType, type)
   }
-  public evaluateNested(expression: Data.TypeExpression): Data.Type<Data.Value> {
+  evaluateNested(expression: Data.TypeExpression): Data.Type<Data.Value> {
     const cachedType = this.#pending.get(expression) ?? this.#cache.get(expression)
     if (cachedType) {
       return cachedType
@@ -83,7 +88,7 @@ class Evaluation {
     --this.#depth
     return type
   }
-  public resolve(name: string): Data.TypeExpression | undefined {
+  resolve(name: string): Data.TypeExpression | undefined {
     return this.#definitions[name]
   }
 }
@@ -170,35 +175,52 @@ const evaluator: Data.TypeExpressionPattern<Data.Type<Data.Value>, [Evaluation]>
     const type = evaluation.evaluateNested(substituteTypeExpressions(body, parameters))
     return evaluation.remember(expression, type)
   },
-  variable(expression, [evaluation]) { throw new Error(evaluation.failure(`unexpected variable ${expression.text}`)) },
-  orelse(expression, [evaluation]) { throw new Error(evaluation.failure(`unknown ${expression.text}`)) }
+  variable(expression, [evaluation]) {
+    throw new Error(evaluation.failure(`unexpected variable ${expression.text}`))
+  },
+  orelse(expression, [evaluation]) {
+    throw new Error(evaluation.failure(`unknown ${expression.text}`))
+  },
 }
 const basicTypes = { boolean: boolean(), int32: int32(), number: number(), string: string() }
 const extractMacro: Data.TypeExpressionPattern<[ReadonlyArray<Data.TypeExpression>, Data.TypeExpression], []> = {
-  macro(_expression, _p, formals, body) { return [formals, body] },
-  orelse() { throw new Error("internal error in extraction of macro formals") },
+  macro(_expression, _p, formals, body) {
+    return [formals, body]
+  },
+  orelse() {
+    throw new Error("internal error in extraction of macro formals")
+  },
 }
 class Space implements Data.Space {
   readonly #definitions: Data.TypeDefinitions
+  readonly #hashcode: ArrayBuffer
   readonly #cache: Map<Data.TypeExpression, Data.Type<Data.Value>>
-  constructor(definitions: Data.TypeDefinitions) {
+  constructor(definitions: Data.TypeDefinitions, hashcode: ArrayBuffer) {
     this.#definitions = definitions
+    this.#hashcode = hashcode
     this.#cache = new Map<Data.TypeExpression, Data.Type<Data.Value>>()
   }
-  public get definitions() { return this.#definitions }
-  public evaluate<T extends Data.Value>(expressionSource: Data.TypeExpression | string): Data.Type<T> {
+  get definitions() {
+    return this.#definitions
+  }
+  get hashcode() {
+    return this.#hashcode
+  }
+  evaluate<T extends Data.Value>(expressionSource: Data.TypeExpression | string): Data.Type<T> {
     const expression = express(expressionSource)
     // grab type from cache if possible; otherwise evaluate it (which adds the result to the cache)
     const type = this.#cache.get(expression) ?? new Evaluation(this.#definitions, expression, this.#cache).type
     return type as Data.Type<T>
   }
-  public export<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _value: T): Data.Structure {
+  export<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _value: T): Data.Structure {
+    // biome-ignore lint/suspicious/noExplicitAny: explanation
     return null as any
   }
-  public import<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _structure: Data.Structure): T {
+  import<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _structure: Data.Structure): T {
+    // biome-ignore lint/suspicious/noExplicitAny: explanation>
     return null as any
   }
 }
-function express(expression: Data.TypeExpression | string): Data.TypeExpression {
-  return typeof expression === "string" ? parseTypeExpression(expression) : expression
+function express(expressionSource: Data.TypeExpression | string): Data.TypeExpression {
+  return typeof expressionSource === "string" ? parseTypeExpression(expressionSource) : expressionSource
 }

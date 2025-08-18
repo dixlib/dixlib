@@ -1,17 +1,19 @@
-// --- TypeScript ---
-import type Theater from 'std.theater'
-// --- JavaScript ---
-export function isSceneMethod(it: unknown): it is Theater.Scenic<unknown, unknown[]> {
+import type Theater from "std.theater"
+import { fn } from "../extern.js"
+import { poisonPill } from "./unique.js"
+
+export function isSceneMethod(it: unknown): it is (...parameters: unknown[]) => Theater.Scene {
   return typeof it === "function" && sceneMarker in it
 }
 
 export function Play(prototype: object, key: PropertyKey, descriptor: PropertyDescriptor) {
-  const { name } = prototype.constructor, method = descriptor.value
+  const { name } = prototype.constructor
   if (!key) {
     throw new Error(`empty scene key in class ${name}`)
   }
   key = String(key)
-  if (!scenicMethod.isPrototypeOf(method)) {
+  const method = descriptor.value
+  if (!fn.isGeneratorFunction(method)) {
     throw new Error(`invalid scene method "${key}" in class ${name}`)
   }
   const defined = Reflect.defineProperty(method, sceneMarker, { value: sceneMarker })
@@ -21,7 +23,11 @@ export function Play(prototype: object, key: PropertyKey, descriptor: PropertyDe
   return descriptor
 }
 
-export function* doNothing() { }
+export function exit(): never {
+  throw poisonPill
+}
+
+export function* doNothing() {}
 
 // ----------------------------------------------------------------------------------------------------------------- //
-const sceneMarker = Symbol("scene method marker"), scenicMethod = Reflect.getPrototypeOf(function* () { })!
+const sceneMarker = Symbol("scene method marker")

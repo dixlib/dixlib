@@ -3,19 +3,11 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./build",
-    "lib": [
-      "esnext"
-    ],
+    "lib": ["ESNext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "typeRoots": [
-      "../../src",
-      "node_modules/@types"
-    ],
-    "types": [
-      "api",
-      "node"
-    ],
+    "typeRoots": ["../../src", "../../node_modules/@types"],
+    "types": ["api", "node"],
     "tsBuildInfoFile": "./build/tsconfig.buildinfo"
   }
 }

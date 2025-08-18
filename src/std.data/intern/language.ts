@@ -1,22 +1,14 @@
-// --- TypeScript ---
-import type Data from 'std.data'
-import type Syntax from 'std.syntax'
-// root node in syntax tree of type expression
-interface RootNode extends Syntax.Node {
-  readonly kind: "type"
-  readonly expression: TypeExpression
-}
-// positions of type variables in scope when parsing
-type Scope = { readonly [name: string]: number }
-// --- JavaScript ---
-import { loop, syntax } from "../extern.js"
+import type Data from "std.data"
+import type Syntax from "std.syntax"
+import { syntax } from "../extern.js"
 
 export function isTypeExpression(it: unknown): it is Data.TypeExpression {
   return it instanceof TypeExpression
 }
 
 export function parseTypeExpression(text: string, location?: string): Data.TypeExpression {
-  return expressionCache[text] ??= parseSource({ text, location }).root.expression
+  expressionCache[text] ??= parseSource({ text, location }).root.expression
+  return expressionCache[text]
 }
 
 export function substituteTypeExpressions(
@@ -27,6 +19,13 @@ export function substituteTypeExpressions(
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
+// root node in syntax tree of type expression
+interface RootNode extends Syntax.Node {
+  readonly kind: "type"
+  readonly expression: TypeExpression
+}
+// positions of type variables in scope when parsing
+type Scope = { readonly [name: string]: number }
 // cache parsed type expressions
 const expressionCache: { [text: string]: TypeExpression } = Object.create(null)
 const lexicon = syntax.createLexicon({
@@ -41,28 +40,35 @@ const parseSource = syntax.createParser({ lexicon, insignificance: { ignore: ["w
 const letterRegex = /^[a-z]$/
 function peekVariable(scanner: Syntax.Scanner) {
   // extract only character of unconsumed selector token and test whether it is a lowercase letter
-  const { lookahead } = scanner, { start, stop } = lookahead
+  const { lookahead } = scanner
+  const { start, stop } = lookahead
   return stop - start === 1 && scanner.peek(lexicon.kind.selector) && letterRegex.test(scanner.extract(lookahead))
 }
 function compareExpressions({ text: left }: TypeExpression, { text: right }: TypeExpression) {
   return left < right ? -1 : left === right ? 1 : 0
 }
-function textual(expression: TypeExpression): string { return expression.text }
-function* loopVariablePositions(mask: number): IterableIterator<number> {
+function textual(expression: TypeExpression): string {
+  return expression.text
+}
+function* loopVariablePositions(mask: number) {
   for (let position = 1, bit = 1; bit <= mask; ++position, bit <<= 1) {
-    if (mask & bit) { yield position }
+    if (mask & bit) {
+      yield position
+    }
   }
 }
 function combineMask(mask: number, expression: TypeExpression): number {
   return mask | TypeExpression.maskOf(expression)
 }
-function combineMasks(expressions: TypeExpression[]) { return expressions.reduce(combineMask, 0) }
+function combineMasks(expressions: TypeExpression[]) {
+  return expressions.reduce(combineMask, 0)
+}
 function combineFieldMask(mask: number, [_, expression]: [string, TypeExpression]) {
   return combineMask(mask, expression)
 }
 function parseRoot(scanner: Syntax.Scanner): Syntax.ParseResult<RootNode> {
   const warnings: string[] = []
-  // EBNF: TypeExpr1 | Variable "=" TypeExpr1 (Variable "=" TypeExpr1)* TypeExpr1
+  // EBNF: TypeExpr1 | (Variable "=" TypeExpr1)+ TypeExpr1
   // the grammar is not LL(1) because a single type variable is also a valid type expression
   // however, a variable can only semantically refer to an expression if it's part of an outer macro
   let expression: TypeExpression
@@ -80,7 +86,8 @@ function parseRoot(scanner: Syntax.Scanner): Syntax.ParseResult<RootNode> {
       formals.push(parseTypeExpr1(scanner, scope))
       scope[variable] = ++n
     } while (scanner.peek(lexicon.kind.selector, "=") && peekVariable(scanner))
-    const body = parseTypeExpr1(scanner, scope), accu: string[] = []
+    const body = parseTypeExpr1(scanner, scope)
+    const accu: string[] = []
     if (body.hasFreeVariables) {
       const unused = formals.length - [...body.freeVariables].length
       if (unused > 0) {
@@ -111,8 +118,9 @@ function parseTypeExpr1(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
   // EBNF: TypeExpr2 "?"?
   const mandatory = parseTypeExpr2(scanner, scope)
   if (scanner.accept("?")) {
-    const text = mandatory.text + "?"
-    return expressionCache[text] ??= new OptionalExpression(text, mandatory)
+    const text = `${mandatory.text}?`
+    expressionCache[text] ??= new OptionalExpression(text, mandatory)
+    return expressionCache[text]
   } else {
     return mandatory
   }
@@ -127,7 +135,8 @@ function parseTypeExpr2(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
   if (alternatives.size > 1) {
     const expressions = [...alternatives].sort(compareExpressions)
     const text = expressions.map(textual).join("|")
-    return expressionCache[text] ??= new UnionExpression(text, expressions)
+    expressionCache[text] ??= new UnionExpression(text, expressions)
+    return expressionCache[text]
   } else {
     const [singleAlternative] = alternatives
     return singleAlternative
@@ -144,19 +153,27 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
   //    | "{" (selector ":" TypeExpr1 ("," selector ":" TypeExpr1)* ","?)? "}"
   //    | TypeVariable
   if (scanner.accept("*")) {
-    return expressionCache["*"] ??= new WildcardExpression("*")
+    expressionCache["*"] ??= new WildcardExpression("*")
+    return expressionCache["*"]
   } else if (scanner.peek("boolean") || scanner.peek("int32") || scanner.peek("number") || scanner.peek("string")) {
     const text = scanner.extract(scanner.expect(lexicon.kind.selector))
-    return expressionCache[text] ??= new BasicExpression(text)
+    expressionCache[text] ??= new BasicExpression(text)
+    return expressionCache[text]
   } else if (scanner.peek("false") || scanner.peek("true")) {
-    const value = scanner.extract(scanner.expect(lexicon.kind.selector)) === "true", text = String(value)
-    return expressionCache[text] ??= new LiteralExpression(text, value)
+    const value = scanner.extract(scanner.expect(lexicon.kind.selector)) === "true"
+    const text = String(value)
+    expressionCache[text] ??= new LiteralExpression(text, value)
+    return expressionCache[text]
   } else if (scanner.peek(lexicon.kind.decimal)) {
-    const value = Number(scanner.extract(scanner.expect(lexicon.kind.decimal))), text = String(value)
-    return expressionCache[text] ??= new LiteralExpression(text, value)
+    const value = Number(scanner.extract(scanner.expect(lexicon.kind.decimal)))
+    const text = String(value)
+    expressionCache[text] ??= new LiteralExpression(text, value)
+    return expressionCache[text]
   } else if (scanner.peek(lexicon.kind.text)) {
-    const text = scanner.extract(scanner.expect(lexicon.kind.text)), value = JSON.parse(text)
-    return expressionCache[text] ??= new LiteralExpression(text, value)
+    const text = scanner.extract(scanner.expect(lexicon.kind.text))
+    const value = JSON.parse(text)
+    expressionCache[text] ??= new LiteralExpression(text, value)
+    return expressionCache[text]
   } else if (scanner.peek(lexicon.kind.typename, "(")) {
     const name = scanner.extract(scanner.expect(lexicon.kind.typename))
     scanner.expect("(")
@@ -166,20 +183,24 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
     } while (scanner.accept(","))
     scanner.expect(")")
     const text = `${name}(${actuals.map(textual).join(",")})`
-    return expressionCache[text] ??= new ApplicationExpression(text, name, actuals)
+    expressionCache[text] ??= new ApplicationExpression(text, name, actuals)
+    return expressionCache[text]
   } else if (scanner.peek(lexicon.kind.typename)) {
     const text = scanner.extract(scanner.expect(lexicon.kind.typename))
-    return expressionCache[text] ??= new ReferenceExpression(text)
+    expressionCache[text] ??= new ReferenceExpression(text)
+    return expressionCache[text]
   } else if (scanner.accept("[")) {
     const elementary = parseTypeExpr1(scanner, scope)
     scanner.expect("]")
     const text = `[${elementary.text}]`
-    return expressionCache[text] ??= new ListExpression(text, elementary)
+    expressionCache[text] ??= new ListExpression(text, elementary)
+    return expressionCache[text]
   } else if (scanner.accept("<")) {
     const elementary = parseTypeExpr1(scanner, scope)
     scanner.expect(">")
     const text = `<${elementary.text}>`
-    return expressionCache[text] ??= new DictionaryExpression(text, elementary)
+    expressionCache[text] ??= new DictionaryExpression(text, elementary)
+    return expressionCache[text]
   } else if (scanner.accept("(")) {
     const parts = [parseTypeExpr1(scanner, scope)]
     scanner.expect(",")
@@ -188,12 +209,14 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
     } while (scanner.accept(","))
     scanner.expect(")")
     const text = `(${parts.map(textual).join(",")})`
-    return expressionCache[text] ??= new TupleExpression(text, parts)
+    expressionCache[text] ??= new TupleExpression(text, parts)
+    return expressionCache[text]
   } else if (scanner.accept("{")) {
     const fields: { [name: string]: TypeExpression } = Object.create(null)
     if (scanner.peek(lexicon.kind.selector)) {
       do {
-        const selectorToken = scanner.expect(lexicon.kind.selector), name = scanner.extract(selectorToken)
+        const selectorToken = scanner.expect(lexicon.kind.selector)
+        const name = scanner.extract(selectorToken)
         if (fields[name]) {
           throw scanner.failure("duplicate record field", selectorToken)
         }
@@ -202,23 +225,31 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
       } while (scanner.accept(",") && !scanner.peek("}"))
     }
     scanner.expect("}")
-    const text = `{${Object.keys(fields).sort().map(name => `${name}:${fields[name].text}`).join(",")}}`
-    return expressionCache[text] ??= new RecordExpression(text, fields)
+    const text = `{${Object.keys(fields)
+      .sort()
+      .map(name => `${name}:${fields[name].text}`)
+      .join(",")}}`
+    expressionCache[text] ??= new RecordExpression(text, fields)
+    return expressionCache[text]
   } else if (peekVariable(scanner)) {
-    const selectorToken = scanner.expect(lexicon.kind.selector), position = scope[scanner.extract(selectorToken)]
+    const selectorToken = scanner.expect(lexicon.kind.selector)
+    const position = scope[scanner.extract(selectorToken)]
     if (!position) {
       throw scanner.failure("variable is unbound", selectorToken)
     }
     // source text is normalized variable name, derived from position
     const text = String.fromCharCode("a".charCodeAt(0) + position - 1)
-    return expressionCache[text] ??= new VariableExpression(text, position)
+    expressionCache[text] ??= new VariableExpression(text, position)
+    return expressionCache[text]
   } else {
     throw scanner.failure("expected start of type expression but found", scanner.lookahead)
   }
 }
 const substitute = Symbol("substitute method")
 abstract class TypeExpression implements Data.TypeExpression {
-  public static maskOf(expression: TypeExpression): number { return expression.#mask }
+  static maskOf(expression: TypeExpression): number {
+    return expression.#mask
+  }
   // canonical source text of this expression
   readonly #text: string
   // track variable usage (position-based) in an expression
@@ -227,14 +258,20 @@ abstract class TypeExpression implements Data.TypeExpression {
     this.#text = text
     this.#mask = mask
   }
-  public get text() { return this.#text }
-  public get arity(): number { return 0 }
-  public get freeVariables(): IterableIterator<number> {
-    return this.#mask === 0 ? loop.over() : loopVariablePositions(this.#mask)
+  get text() {
+    return this.#text
   }
-  public get hasFreeVariables() { return this.#mask > 0 }
-  public abstract match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O
-  public abstract [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression
+  get arity(): number {
+    return 0
+  }
+  get freeVariables(): IteratorObject<number> {
+    return this.#mask === 0 ? [].values() : loopVariablePositions(this.#mask)
+  }
+  get hasFreeVariables() {
+    return this.#mask > 0
+  }
+  abstract match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T
+  abstract [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression
 }
 class MacroExpression extends TypeExpression {
   readonly #formals: ReadonlyArray<TypeExpression>
@@ -244,18 +281,24 @@ class MacroExpression extends TypeExpression {
     this.#formals = Object.freeze(formals)
     this.#body = body
   }
-  public get arity() { return this.#formals.length }
-  public get formals() { return this.#formals }
-  public get body() { return this.#body }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.macro ? pattern.macro(this, p, this.#formals, this.#body) : pattern.orelse(this, p)
+  get arity() {
+    return this.#formals.length
   }
-  public [substitute](): Data.TypeExpression {
+  get formals() {
+    return this.#formals
+  }
+  get body() {
+    return this.#body
+  }
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.macro ? pattern.macro(this, parameters, this.#formals, this.#body) : pattern.orelse(this, parameters)
+  }
+  [substitute](): Data.TypeExpression {
     throw new Error("illegal parameter substitution in macro expression")
   }
 }
 class OptionalExpression extends TypeExpression {
-  public static mandatoryOf(expression: OptionalExpression): TypeExpression {
+  static mandatoryOf(expression: OptionalExpression): TypeExpression {
     return expression.#mandatory
   }
   readonly #mandatory: TypeExpression
@@ -263,16 +306,17 @@ class OptionalExpression extends TypeExpression {
     super(text, TypeExpression.maskOf(mandatory))
     this.#mandatory = mandatory
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.optional ? pattern.optional(this, p, this.#mandatory) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.optional ? pattern.optional(this, parameters, this.#mandatory) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     const substitution = this.#mandatory[substitute](parameters) as TypeExpression
     if (substitution instanceof OptionalExpression) {
       return substitution
     }
-    const text = substitution.text + "?"
-    return expressionCache[text] ??= new OptionalExpression(text, substitution)
+    const text = `${substitution.text}?`
+    expressionCache[text] ??= new OptionalExpression(text, substitution)
+    return expressionCache[text]
   }
 }
 class UnionExpression extends TypeExpression {
@@ -281,10 +325,10 @@ class UnionExpression extends TypeExpression {
     super(text, combineMasks(alternatives))
     this.#alternatives = Object.freeze(alternatives)
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.union ? pattern.union(this, p, this.#alternatives) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.union ? pattern.union(this, parameters, this.#alternatives) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     let optional = false
     const substitutions: Set<TypeExpression> = new Set()
     for (const alternative of this.#alternatives) {
@@ -314,26 +358,37 @@ class UnionExpression extends TypeExpression {
       mandatory = singleAlternative
     }
     if (optional) {
-      const text = mandatory.text + "?"
-      return expressionCache[text] ??= new OptionalExpression(text, mandatory)
+      const text = `${mandatory.text}?`
+      expressionCache[text] ??= new OptionalExpression(text, mandatory)
+      return expressionCache[text]
     } else {
       return mandatory
     }
   }
 }
 class WildcardExpression extends TypeExpression {
-  constructor(text: string) { super(text, 0) }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.wildcard ? pattern.wildcard(this, p) : pattern.orelse(this, p)
+  constructor(text: string) {
+    super(text, 0)
   }
-  public [substitute](): Data.TypeExpression { return this }
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.wildcard ? pattern.wildcard(this, parameters) : pattern.orelse(this, parameters)
+  }
+  [substitute](): Data.TypeExpression {
+    return this
+  }
 }
 class BasicExpression extends TypeExpression {
-  constructor(text: string) { super(text, 0) }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.basic ? pattern.basic(this, p, this.text as Data.BasicNames) : pattern.orelse(this, p)
+  constructor(text: string) {
+    super(text, 0)
   }
-  public [substitute](): Data.TypeExpression { return this }
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parmeters: P): T {
+    return pattern.basic
+      ? pattern.basic(this, parmeters, this.text as Data.BasicNames)
+      : pattern.orelse(this, parmeters)
+  }
+  [substitute](): Data.TypeExpression {
+    return this
+  }
 }
 class LiteralExpression extends TypeExpression {
   readonly #value: Data.Literal
@@ -341,17 +396,23 @@ class LiteralExpression extends TypeExpression {
     super(text, 0)
     this.#value = value
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.literal ? pattern.literal(this, p, this.#value) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.literal ? pattern.literal(this, parameters, this.#value) : pattern.orelse(this, parameters)
   }
-  public [substitute](): Data.TypeExpression { return this }
+  [substitute](): Data.TypeExpression {
+    return this
+  }
 }
 class ReferenceExpression extends TypeExpression {
-  constructor(text: string) { super(text, 0) }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.reference ? pattern.reference(this, p, this.text) : pattern.orelse(this, p)
+  constructor(text: string) {
+    super(text, 0)
   }
-  public [substitute](): Data.TypeExpression { return this }
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.reference ? pattern.reference(this, parameters, this.text) : pattern.orelse(this, parameters)
+  }
+  [substitute](): Data.TypeExpression {
+    return this
+  }
 }
 class ApplicationExpression extends TypeExpression {
   readonly #name: string
@@ -361,10 +422,12 @@ class ApplicationExpression extends TypeExpression {
     this.#name = name
     this.#actuals = Object.freeze(actuals)
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.application ? pattern.application(this, p, this.#name, this.#actuals) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.application
+      ? pattern.application(this, parameters, this.#name, this.#actuals)
+      : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     const actuals: TypeExpression[] = []
     for (const actual of this.#actuals) {
       if (!actual.hasFreeVariables) {
@@ -374,7 +437,8 @@ class ApplicationExpression extends TypeExpression {
       }
     }
     const text = `${this.#name}(${actuals.map(textual).join(",")})`
-    return expressionCache[text] ??= new ApplicationExpression(text, name, actuals)
+    expressionCache[text] ??= new ApplicationExpression(text, name, actuals)
+    return expressionCache[text]
   }
 }
 class ListExpression extends TypeExpression {
@@ -383,14 +447,15 @@ class ListExpression extends TypeExpression {
     super(text, TypeExpression.maskOf(elementary))
     this.#elementary = elementary
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.list ? pattern.list(this, p, this.#elementary) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.list ? pattern.list(this, parameters, this.#elementary) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     if (this.#elementary.hasFreeVariables) {
       const elementary = this.#elementary[substitute](parameters) as TypeExpression
       const text = `[${elementary.text}]`
-      return expressionCache[text] ??= new ListExpression(text, elementary)
+      expressionCache[text] ??= new ListExpression(text, elementary)
+      return expressionCache[text]
     } else {
       return this
     }
@@ -402,14 +467,17 @@ class DictionaryExpression extends TypeExpression {
     super(text, TypeExpression.maskOf(elementary))
     this.#elementary = elementary
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.dictionary ? pattern.dictionary(this, p, this.#elementary) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.dictionary
+      ? pattern.dictionary(this, parameters, this.#elementary)
+      : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     if (this.#elementary.hasFreeVariables) {
       const elementary = this.#elementary[substitute](parameters) as TypeExpression
       const text = `<${elementary.text}>`
-      return expressionCache[text] ??= new DictionaryExpression(text, elementary)
+      expressionCache[text] ??= new DictionaryExpression(text, elementary)
+      return expressionCache[text]
     } else {
       return this
     }
@@ -421,10 +489,10 @@ class TupleExpression extends TypeExpression {
     super(text, combineMasks(parts))
     this.#parts = Object.freeze(parts)
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.tuple ? pattern.tuple(this, p, this.#parts) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.tuple ? pattern.tuple(this, parameters, this.#parts) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     const parts: TypeExpression[] = []
     for (const part of this.#parts) {
       if (!part.hasFreeVariables) {
@@ -434,7 +502,8 @@ class TupleExpression extends TypeExpression {
       }
     }
     const text = `(${parts.map(textual).join(",")})`
-    return expressionCache[text] ??= new TupleExpression(text, parts)
+    expressionCache[text] ??= new TupleExpression(text, parts)
+    return expressionCache[text]
   }
 }
 class RecordExpression extends TypeExpression {
@@ -443,19 +512,24 @@ class RecordExpression extends TypeExpression {
     super(text, Object.entries(fields).reduce(combineFieldMask, 0))
     this.#fields = Object.freeze(fields)
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.record ? pattern.record(this, p, this.#fields) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.record ? pattern.record(this, parameters, this.#fields) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     const fields: { [name: string]: TypeExpression } = Object.create(null)
     for (const fieldKey in this.#fields) {
       const fieldTypeExpression = this.#fields[fieldKey]
-      const substitution = !fieldTypeExpression.hasFreeVariables ? fieldTypeExpression :
-        fieldTypeExpression[substitute](parameters) as TypeExpression
+      const substitution = !fieldTypeExpression.hasFreeVariables
+        ? fieldTypeExpression
+        : (fieldTypeExpression[substitute](parameters) as TypeExpression)
       fields[fieldKey] = substitution
     }
-    const text = `{${Object.keys(fields).sort().map(name => `${name}:${fields[name].text}`).join(",")}}`
-    return expressionCache[text] ??= new RecordExpression(text, fields)
+    const text = `{${Object.keys(fields)
+      .sort()
+      .map(name => `${name}:${fields[name].text}`)
+      .join(",")}}`
+    expressionCache[text] ??= new RecordExpression(text, fields)
+    return expressionCache[text]
   }
 }
 class VariableExpression extends TypeExpression {
@@ -464,10 +538,10 @@ class VariableExpression extends TypeExpression {
     super(text, 1 << (position - 1))
     this.#position = position
   }
-  public match<O, P extends unknown[]>(pattern: Data.TypeExpressionPattern<O, P>, ...p: P): O {
-    return pattern.variable ? pattern.variable(this, p, this.#position) : pattern.orelse(this, p)
+  match<T, P extends unknown[]>(pattern: Data.TypeExpressionPattern<T, P>, ...parameters: P): T {
+    return pattern.variable ? pattern.variable(this, parameters, this.#position) : pattern.orelse(this, parameters)
   }
-  public [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
+  [substitute](parameters: ReadonlyArray<Data.TypeExpression>): Data.TypeExpression {
     return parameters[this.#position - 1]
   }
 }

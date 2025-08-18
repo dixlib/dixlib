@@ -1,4 +1,4 @@
-declare module 'std.syntax' {
+declare module "std.syntax" {
   export default Syntax
   /**
    * The syntax service provides basic support for simple parsers.
@@ -6,12 +6,14 @@ declare module 'std.syntax' {
   interface Syntax {
     /**
      * Create a lexicon that splits an input text into tokens.
+     *
      * @param patterns Pattern definitions
      * @returns A lexicon
      */
     createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<keyof L & string>
     /**
      * Create a parser for given language.
+     *
      * @param language Language specification
      * @returns A parser for the language
      */
@@ -37,6 +39,7 @@ declare module 'std.syntax' {
     interface Node {
       /**
        * A symbolic kind is reserved for input tokens i.e., leaves in a concrete syntax tree.
+       *
        * Otherwise the kind identifies the internal node type.
        */
       readonly kind: string | symbol
@@ -44,7 +47,7 @@ declare module 'std.syntax' {
     /**
      * A token is a leaf in a concrete syntax tree.
      */
-    interface Token extends Node { 
+    interface Token extends Node {
       readonly kind: symbol
       /**
        * Offset where token starts in source text.
@@ -61,16 +64,10 @@ declare module 'std.syntax' {
     type Patterns = { readonly [name: string]: PatternTester | RegExp | string[] }
     /**
      * A functional pattern tester.
+     *
+     * A tester checks whether the pattern can be matched at given start offset in the input text.
      */
-    interface PatternTester {
-      /**
-       * Try to match this pattern in text at given offset.
-       * @param input Input text
-       * @param start Offset to start matching
-       * @returns Stop offset after match
-       */
-      (input: string, start: number): number
-    }
+    type PatternTester = (input: string, start: number) => number
     /**
      * A lexicon splits a text into tokens.
      */
@@ -85,10 +82,11 @@ declare module 'std.syntax' {
       readonly pattern: { readonly [kind: symbol]: string }
       /**
        * Split a text into tokens that cover the whole text.
+       *
        * @param text A text
-       * @returns An iterable iterator over tokens
+       * @returns A generator over tokens
        */
-      tokenize(text: string): IterableIterator<Token>
+      tokenize(text: string): Generator<Token>
     }
     /**
      * A scanner expects symbolic token kinds or literal nonempty strings.
@@ -97,9 +95,10 @@ declare module 'std.syntax' {
     /**
      * Line and column position in source text.
      */
-    type Position = { readonly line: number, readonly column: number }
+    type Position = { readonly line: number; readonly column: number }
     /**
      * A scanner assists a parser by consuming a source text, token by token.
+     *
      * It buffers zero or more tokens ahead that have not been consumed.
      */
     interface Scanner {
@@ -113,6 +112,7 @@ declare module 'std.syntax' {
       readonly atEnd: boolean
       /**
        * The lookahead is the first unconsumed token.
+       *
        * If this scanner is at its end, it returns an empty terminator token.
        */
       readonly lookahead: Token
@@ -121,34 +121,39 @@ declare module 'std.syntax' {
        */
       readonly gathered: IterableIterator<Token>
       /**
-       * Create an error with token information.
+       * Create an error message with token information.
+       *
        * @param message Error message
        * @param token Problematic token
-       * @returns An error
+       * @returns An error message
        */
-      failure(message: string, token: Token): Error
+      failure(message: string, token: Token): string
       /**
        * Peek ahead and check expectations.
+       *
        * @param expectations Scanner expectations
        * @returns True if tokens ahead match the expectations, otherwise false
        */
       peek(...expectations: Expectation[]): boolean
       /**
        * Consume next token ahead if it matches the expectation.
+       *
        * @param expectation Expectation to test
        * @returns A token if expectation holds, otherwise undefined
        */
       accept(expectation: Expectation): Token | undefined
       /**
-      * Consume next token ahead that must match the expectation.
-      * @param expectation Expectation to verify
-      * @returns The matched token
-      * @throws When this scanner is at its end
-      * @throws When the expectation does not hold
-      */
+       * Consume next token ahead that must match the expectation.
+       *
+       * @param expectation Expectation to verify
+       * @returns The matched token
+       * @throws When this scanner is at its end
+       * @throws When the expectation does not hold
+       */
       expect(expectation: Expectation): Token
       /**
-       * Extract text of token from source. 
+       * Extract text of token from source.
+       *
        * @param token Token to extract
        * @param max Optional maximum length of extraction
        * @returns A string
@@ -156,12 +161,14 @@ declare module 'std.syntax' {
       extract(token: Token, max?: number): string
       /**
        * Determine line position of offset in text.
+       *
        * @param offset Offset in text e.g. start or stop offset of token
        * @returns A position with line and column info
        */
       position(offset: number): Position
       /**
        * Extract text of line from source.
+       *
        * @param line Line number
        * @param max Optional maximum length of extraction
        * @returns A string
@@ -182,6 +189,7 @@ declare module 'std.syntax' {
       readonly lexicon: Lexicon<N>
       /**
        * Token insignificance.
+       *
        * The scanner does not pass insignificant tokens to the parser.
        */
       readonly insignificance?: {
@@ -195,7 +203,8 @@ declare module 'std.syntax' {
         gather?: N[]
       }
       /**
-       * Parse source with the given scanner.
+       * Parse source with the given scanner e.g., a recursive-descent parser.
+       *
        * @param scanner Scanner on the source object
        * @returns A parse result with root node and gathered tokens
        */

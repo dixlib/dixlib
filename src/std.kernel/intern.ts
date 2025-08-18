@@ -1,14 +1,14 @@
-// --- TypeScript ---
-import type Kernel from 'std.kernel'
+import type Kernel from "std.kernel"
+
 export interface Startup<Init> {
   readonly path: string
   readonly initial: Init
   readonly parentPort: MessagePort
 }
-// --- JavaScript ---
-export function isUnparented() {
-  // an unparented worker is not a dedicated worker on the web
-  // it is either a shared worker or a browser window (service workers are excluded)
+
+export function isUnsupervised() {
+  // an unsupervised web worker is any worker that is not a dedicated worker
+  // it is either a shared worker or a browser window in dixlib
   return typeof DedicatedWorkerGlobalScope !== "function"
 }
 
@@ -26,7 +26,9 @@ export async function startWorker<Init>(
 ): Promise<Kernel.Worker> {
   // create dedicated worker
   const worker = new Worker(workerScript, { type: "module" })
-  function terminate() { worker.terminate() }
+  function terminate() {
+    worker.terminate()
+  }
   try {
     const { port1: parentPort, port2: childPort } = new MessageChannel()
     const startup: Startup<Init> = { path: path.href, initial, parentPort }
@@ -72,7 +74,7 @@ export function encodeBase64URI(decoded: Uint8Array, type = "application/octet-s
   const reader = new FileReader()
   reader.onload = () => resolve(reader.result as string)
   reader.onerror = () => reject(reader.error)
-  reader.readAsDataURL(new File([decoded], "", { type }))
+  reader.readAsDataURL(new File([decoded as BlobPart], "", { type }))
   return promise
 }
 
@@ -83,7 +85,8 @@ let uniqueMacrotask = 1
 const macrotasks: { [id: number]: () => void } = Object.create(null)
 const { port1, port2 } = new MessageChannel()
 port1.addEventListener("message", event => {
-  const id = event.data, macrotask = macrotasks[id]
+  const id = event.data
+  const macrotask = macrotasks[id]
   delete macrotasks[id]
   macrotask()
 })

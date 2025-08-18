@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig-base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./build",
+    "lib": ["ESNext", "DOM"],
+    "typeRoots": ["../../src"],
+    "types": ["api"],
+    "tsBuildInfoFile": "./build/tsconfig.buildinfo"
+  }
+}

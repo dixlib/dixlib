@@ -1,23 +1,28 @@
-interface ServiceAspects {
-  /**
-   * If true, an extern module provides the bundled service implementation.
-   */
-  readonly implementation?: boolean
+declare module "dixlib" {
+  interface ServiceAspects {
+    /**
+     * If true, an extern module provides the bundled service implementation.
+     */
+    readonly implementation?: boolean
+  }
 }
-declare module 'std.loader' {
+declare module "std.loader" {
+  import type { Contract, Service, ServiceAspect, ServiceBindings, ServiceName } from "dixlib"
   export default Loader
   /**
    * The loader implements a promise-based API to manage services.
    */
   interface Loader {
     /**
-    * Promise to provide an implementation of a service.
-    * @param name Service name
-    * @returns A promise that resolves with the service provider
-    */
-    provide<S>(name: string): Promise<S>
+     * Promise to provide an implementation of a service.
+     *
+     * @param name Service name
+     * @returns A promise that resolves with the service provider
+     */
+    provide<Name extends ServiceName>(name: Name): Promise<Service[Name]>
     /**
      * Query bound services.
+     *
      * @param options Optional query options
      * @returns An iterable iterator over bound services
      */
@@ -35,12 +40,12 @@ declare module 'std.loader' {
       /**
        * Bound service aspects.
        */
-      readonly service: ServiceMap
+      readonly service: ServiceBindings
     }
     /**
      * An extern module exports a default function, the contractor, which promises to fulfill the given contract.
      */
-    type Contractor<S> = (contract: Contract<S>) => Promise<S>
+    type Contractor<Name extends ServiceName> = (contract: Contract<Name>) => Promise<Service[Name]>
     /**
      * A query result specifies all services which are bound at some service aspect and bundle id.
      */
@@ -60,13 +65,14 @@ declare module 'std.loader' {
       /**
        * Iterable iterator over names of bound services.
        */
-      readonly serviceNames: IterableIterator<string>
+      readonly serviceNames: IterableIterator<ServiceName>
       /**
        * Test whether some service is bound.
+       *
        * @param serviceName Name of service to test
        * @returns True if service is bound, otherwise false
        */
-      hasBindingFor(serviceName: string): boolean
+      hasBindingFor(serviceName: ServiceName): boolean
     }
     /**
      * Options to filter and order qeury results.

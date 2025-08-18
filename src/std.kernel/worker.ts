@@ -1,7 +1,6 @@
-// --- TypeScript ---
-import type Kernel from 'std.kernel'
+import type Kernel from "std.kernel"
 import type { Startup } from "./intern.ts"
-// --- JavaScript ---
+
 // ----------------------------------------------------------------------------------------------------------------- //
 const { path, initial, parentPort } = await new Promise<Startup<unknown>>((resolve, reject) => {
   // install handler to receive startup info once

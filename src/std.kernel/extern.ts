@@ -1,4 +1,3 @@
-// --- TypeScript ---
-import type Kernel from 'std.kernel'
-// --- JavaScript ---
-export default (): Promise<Kernel> => import("./intern.js")
+import type { Service } from "dixlib"
+
+export default (): Promise<Service["std.kernel"]> => import("./intern.js")

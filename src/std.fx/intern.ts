@@ -1,12 +1,13 @@
-// --- TypeScript ---
-import type Fx from 'std.fx'
-// --- JavaScript ---
+import type Fx from "std.fx"
+
 export function erroneous(it: unknown): Error {
   return it instanceof Error ? it : new Error(stringify(it))
 }
 
+//biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
 export function mixin<M extends {}, S extends {} = {}>(template: Fx.Template<M, S>): Fx.Mixin<M, S> {
-  const cache = new WeakMap(), marker = Symbol("mixin instance")
+  const cache = new WeakMap()
+  const marker = Symbol("mixin instance")
   function subclass<C extends Fx.Constructor<S>>(Super: C) {
     // test whether Super already implements mixin
     if (Super.prototype[marker] === marker) {
@@ -31,35 +32,39 @@ export function mixin<M extends {}, S extends {} = {}>(template: Fx.Template<M, 
   return subclass as Fx.Mixin<M, S>
 }
 
-export function facade<H extends {}, I extends {}>(name: string, proto?: object): Fx.Facade<H, I> {
+export function createFacade<Opaq extends {}, Impl extends {}>(name: string, proto?: object): Fx.Facade<Opaq, Impl> {
   const hidden = Symbol(`${name} implementation`)
-  return {
-    isHandling(it: unknown): it is H {
+  return Object.freeze({
+    isHandling(it: unknown): it is Opaq {
       return typeof it === "object" && !!it && hidden in it
     },
-    handle<X extends H>(impl: I): X {
-      return Object.preventExtensions(Object.create(proto ?? null, {
+    handle<SubOpaq extends Opaq>(impl: Impl): SubOpaq {
+      const opaq = Object.create(proto ?? null, {
         [Symbol.toStringTag]: { value: name },
         [hidden]: { value: impl, configurable: true },
-      }))
+      })
+      return Object.preventExtensions(opaq)
     },
-    expose(handle: H & { [hidden]: I }): I {
-      return handle[hidden]
+    expose(opaq: Opaq & { [hidden]: Impl }): Impl {
+      return opaq[hidden]
     },
-    reset(handle: H, impl: I): void {
+    reset(opaq: Opaq, impl: Impl): void {
       // ensure proper handle
-      if (hidden in handle) {
-        Reflect.defineProperty(handle, hidden, { value: impl, configurable: true })
+      if (hidden in opaq) {
+        Reflect.defineProperty(opaq, hidden, {
+          value: impl,
+          configurable: true,
+        })
       }
-    }
-  }
+    },
+  })
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
 function stringify(it: unknown) {
   try {
     return String(it)
-  } catch (whatever) {
+  } catch (_) {
     try {
       // when it is not derived from Object.prototype
       return Object.prototype.toString.call(it)
@@ -67,7 +72,7 @@ function stringify(it: unknown) {
       try {
         // return string representation of problem
         return String(problem)
-      } catch (whatever) {
+      } catch (_) {
         // if everything fails
         return "cannot stringify"
       }

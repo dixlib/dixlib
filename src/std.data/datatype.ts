@@ -7,5 +7,5 @@ export const definitions = {
   "Data.Dictionary": "a=*? <a>",
   "Data.Pair": "a=*? b=*? (a,b)",
   "Data.BinTree": "a=*? Data.Maybe({left:Data.BinTree(a),right:Data.BinTree(a),value:a})",
-  "Data.Bla": "a=*? b=*? a|b"
+  "Data.Bla": "a=*? b=*? a|b",
 }

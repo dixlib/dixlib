@@ -1,8 +1,5 @@
-// --- JavaScript ---
 export { ContainerRole } from "./intern/container.js"
+export { ancestry, id } from "./intern/hierarchy.js"
+export { Nearby, NearbyServer } from "./intern/network.js"
+export { loader, root, version } from "./intern/root.js"
 export { Subsidiary } from "./intern/subsidiary.js"
-export { Nearby } from "./intern/network.js"
-export { ancestry } from "./intern/network.js"
-export { id } from "./intern/network.js"
-export { root } from "./intern/network.js"
-export { loader } from "./intern/network.js"

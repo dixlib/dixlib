@@ -1,9 +1,8 @@
-// --- TypeScript ---
-import type Future from 'std.future'
-import type News from 'std.news'
-// --- JavaScript ---
-export default async ({ use }: Contract<News>): Promise<News> => {
-  [future] = await use('std.future')
+import type { Contract, Service } from "dixlib"
+
+export default async ({ use }: Contract<"std.news">): Promise<Service["std.news"]> => {
+  ;[concurrency] = await use("std.concurrency")
   return import("./intern.js")
 }
-export let future: Future
+
+export let concurrency: Service["std.concurrency"]

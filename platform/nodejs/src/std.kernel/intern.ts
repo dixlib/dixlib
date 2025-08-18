@@ -1,16 +1,14 @@
-// --- TypeScript ---
-import type Kernel from 'std.kernel'
-import type { MessagePort } from "node:worker_threads"
+import { Buffer } from "node:buffer"
+import { isMainThread, type MessagePort, Worker } from "node:worker_threads"
+import type Kernel from "std.kernel"
+
 export interface Startup<Init> {
   readonly path: string
   readonly initial: Init
   readonly parentPort: MessagePort
 }
-// --- JavaScript ---
-import { Worker, isMainThread } from "node:worker_threads"
-import { Buffer } from "node:buffer"
 
-export function isUnparented() {
+export function isUnsupervised() {
   return isMainThread
 }
 
@@ -25,8 +23,13 @@ export async function startWorker<Init>(
   // create worker with startup info and transfer parent port
   const { port1: parentPort, port2: childPort } = new MessageChannel()
   const workerData: Startup<Init> = { path: path.href, initial, parentPort }
-  const worker = new Worker(workerScript, { workerData, transferList: [parentPort, ...transfer] })
-  function terminate() { worker.terminate() }
+  const worker = new Worker(workerScript, {
+    workerData,
+    transferList: [parentPort, ...transfer],
+  })
+  function terminate() {
+    worker.terminate()
+  }
   try {
     const { promise, resolve, reject } = Promise.withResolvers<void>()
     function onceError(error: Error) {
@@ -46,6 +49,7 @@ export async function startWorker<Init>(
       worker.off("error", onceError)
       worker.off("message", onceMessage)
     }, 5e3)
+    // wait for confirmation from child
     await promise
     return Object.freeze({ childPort, terminate })
   } catch (problem) {
@@ -60,8 +64,9 @@ export function decodeBase64URI(encoded: string): Promise<Uint8Array> {
 }
 
 export function encodeBase64URI(decoded: Uint8Array, type = "application/octet-stream"): Promise<string> {
-  return type.indexOf(",") >= 0 ? Promise.reject(new Error("invalid MIME type")) :
-    Promise.resolve(`data:${type};base64,` + Buffer.from(decoded).toString("base64"))
+  return type.indexOf(",") >= 0
+    ? Promise.reject(new Error("invalid MIME type"))
+    : Promise.resolve(`data:${type};base64,${Buffer.from(decoded).toString("base64")}`)
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //

@@ -1,4 +1,3 @@
-// --- TypeScript ---
-import type Fx from 'std.fx'
-// --- JavaScript ---
-export default async (): Promise<Fx> => import("./intern.js")
+import type { Service } from "dixlib"
+
+export default (): Promise<Service["std.fx"]> => import("./intern.js")

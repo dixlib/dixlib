@@ -1,8 +1,8 @@
-// --- TypeScript ---
-import type StartSystem from "dixlib"
-import type Kernel from 'std.kernel'
-import type Loader from 'std.loader'
-// Initial info passed from parent to child system
+import type { Default } from "dixlib"
+import type Kernel from "std.kernel"
+import type Loader from "std.loader"
+
+// info passed from parent to child system
 export interface Initial {
   // ancestry chain: from id, parent id, grandparent id, great-grandparent id, ..., to 0 (the top id)
   readonly ancestry: [number, ...number[]]
@@ -11,7 +11,7 @@ export interface Initial {
   // bundle stack with bindings for child system
   readonly bundleStack: Loader.Bindings[]
 }
-// --- JavaScript ---
+
 // main entry point of a new child subsystem
 export default function main({ initial, parentPort: superPort, exit: shutdown }: Kernel.Main<Initial>) {
   parentPort = superPort
@@ -26,7 +26,7 @@ export let parentPort: MessagePort, exit: () => void, ancestry: [number, ...numb
 // ----------------------------------------------------------------------------------------------------------------- //
 async function startSubsystem(dixlib: string, bundleStack: Loader.Bindings[]) {
   // import "dixlib" with specifier from parent system
-  const { default: startSystem }: { readonly default: typeof StartSystem } = await import(dixlib)
+  const { default: startSystem }: Default = await import(dixlib)
   // start child system with given bundle stack
   return startSystem(bundleStack)
 }
