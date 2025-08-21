@@ -1,6 +1,7 @@
 import startSystem from "dixlib"
 
 try {
+  const start = performance.now()
   const system = await startSystem([])
   const loader = system.loader()
   const [agency, data, future, kernel, news, syntax, theater] = await Promise.all([
@@ -12,7 +13,8 @@ try {
     loader.provide("std.syntax"),
     loader.provide("std.theater"),
   ])
-  news.info("services: %o %o %o %o %o %o %o %o", agency, future, kernel, loader, news, syntax, system, theater)
+  news.info("started at %d", start)
+  news.info("services: %o %o %o %o %o %o %o %o %0", agency, data, future, kernel, loader, news, syntax, system, theater)
   const subsystemServer = theater.startActor(system.Subsidiary(), [])
   const subsystemClient = theater.startActor(agency.Client(), subsystemServer)
   const subsystem = agency.createAgent(subsystemClient)

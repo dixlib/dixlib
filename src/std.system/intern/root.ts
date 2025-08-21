@@ -20,7 +20,8 @@ export function loader() {
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-function* guard(): Theater.Scene<Theater.Verdict> {
+function* guard(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
+  news.debug("unexpected incident with logger: %o", incident)
   // ignore logger related errors
   return "forgive"
 }

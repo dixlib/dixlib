@@ -52,7 +52,8 @@ class SubsidiaryRole
     return this.#id
   }
   @agency.Serve *shutdown(): Theater.Scene {
-    this.exitSelf()
+    // send termination message; exitSelf is inappropriate because it prevents sending an answer back to the client
+    this.self.terminate()
   }
 }
 // associate supervised subsystem with its parent port in the network

@@ -57,17 +57,17 @@ This contract can be used to provide other services on which the internal implem
 These providers are exported to make them available to the internal implementation.
 
 ```typescript
-// --- TypeScript --
-import type Awesome from 'acme.awesome'
-import type Fabulous from 'acme.fabulous'
-import type Sumblime from 'acme.sublime'
-// --- JavaScript ---
-export default async ({ use }: Contract<Awesome>): Promise<Awesome> {
+import type { Contract, Service } from "dixlib"
+
+export default async ({ use }: Contract<Service['std.awesome']>): Promise<Service['std.awesome']> {
   // provide service dependencies
   [fabulous, sublime] = await use('acme.fabulous', 'acme.sublime')
   return import("./intern.js")
 }
-export let fabulous: Fabulous, sublime: Sublime
+
+export let fabulous: Service['acme.fabulous']
+
+export let sublime: Service['std.sublime']
 ```
 
 ### `intern.ts`
@@ -79,12 +79,10 @@ The next example is a simple service provider that restricts the whole internal 
 A complex provider benefits from a more modular organization of the internal implementation.
 
 ```typescript
-// --- TypeScript --
 import type Awesome from 'acme.awesome'
 import type Fabulous from 'acme.fabulous'
 import type Sublime from 'acme.sublime'
-// --- JavaScript ---
-import { fabulous, sublime, } from "./extern.js"
+import { fabulous, sublime } from "./extern.js"
 
 export function foo(): Awesome.Thing {
   fabulous.prepareIt()
