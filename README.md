@@ -59,7 +59,7 @@ These providers are exported to make them available to the internal implementati
 ```typescript
 import type { Contract, Service } from "dixlib"
 
-export default async ({ use }: Contract<Service['std.awesome']>): Promise<Service['std.awesome']> {
+export default async ({ use }: Contract<Service['acme.awesome']>): Promise<Service['acme.awesome']> {
   // provide service dependencies
   [fabulous, sublime] = await use('acme.fabulous', 'acme.sublime')
   return import("./intern.js")
@@ -67,7 +67,7 @@ export default async ({ use }: Contract<Service['std.awesome']>): Promise<Servic
 
 export let fabulous: Service['acme.fabulous']
 
-export let sublime: Service['std.sublime']
+export let sublime: Service['acme.sublime']
 ```
 
 ### `intern.ts`
@@ -131,6 +131,12 @@ The operations of the standard kernel cover functionality that is not part of Ja
 ### `std.theater`
 
 The standard theater is an actor system for JavaScript environments.
+
+### `std.agency`
+
+The standard agency supports agents i.e., active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
+Every interaction with an agent result in a JavaScript promise.
+Under the hood, agents use a client/server actor pair to perform the agent actions.
 
 ### `std.system`
 
