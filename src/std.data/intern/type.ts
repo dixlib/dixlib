@@ -156,6 +156,10 @@ export function optional<T extends Data.Wildcard>(mandatory: Data.Type<T>): Data
   }
 }
 
+export function equalType(left: Data.Type<Data.Value>, right: Data.Type<Data.Value>): boolean {
+  return left === right || facade.expose(left) === facade.expose(right)
+}
+
 export function createDummy(): Data.Type<Data.Value> {
   return facade.handle(dummy)
 }
@@ -221,9 +225,6 @@ function compareDatatype(left: Datatype<Data.Value>, right: Datatype<Data.Value>
 }
 function compareType(left: Data.Type<Data.Value>, right: Data.Type<Data.Value>): number {
   return left === right ? 0 : compareDatatype(facade.expose(left), facade.expose(right))
-}
-function equalType(left: Data.Type<Data.Value>, right: Data.Type<Data.Value>): boolean {
-  return left === right || facade.expose(left) === facade.expose(right)
 }
 const booleanType = facade.handle<Data.Type<boolean>>(
   new (class BooleanDatatype extends Datatype<boolean> {

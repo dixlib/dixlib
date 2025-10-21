@@ -76,7 +76,7 @@ function createBootLoader(bundles: Loader.Bindings[]) {
     }
   }
   // query bound services of this loader
-  function* query(options?: Loader.QueryOptions): IterableIterator<Loader.QueryResult> {
+  function* query(options?: Loader.QueryOptions): Generator<Loader.QueryResult> {
     const aspectFilter = options?.aspects
     const bundleFilter = options?.bundles
     const aspects = Array.isArray(aspectFilter) ? new Set(aspectFilter) : boundAspects
@@ -255,7 +255,7 @@ class QueryResult implements Loader.QueryResult {
     return this.#serviceNames.size
   }
   get serviceNames() {
-    return this.#serviceNames[Symbol.iterator]()
+    return this.#serviceNames.values()
   }
   hasBindingFor(serviceName: ServiceName): boolean {
     return this.#serviceNames.has(serviceName)

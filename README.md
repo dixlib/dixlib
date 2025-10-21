@@ -132,6 +132,11 @@ The operations of the standard kernel cover functionality that is not part of Ja
 
 The standard theater is an actor system for JavaScript environments.
 
+### `std.future`
+
+The standard future service contains utilities for theater cues.
+A theater cue reveals an asynchronous signal that an actor can await.
+
 ### `std.agency`
 
 The standard agency supports agents i.e., active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
@@ -142,3 +147,21 @@ Under the hood, agents use a client/server actor pair to perform the agent actio
 
 The standard system is the component manager.
 It deploys components and subsystems.
+
+### `std.news`
+
+The standard news service is a logging solution.
+Subsystems forward their log messages to the top system.
+
+### `std.concurrency`
+
+The standard concurrency service provides support for common concurrent scenarios e.g., producer/consumer synchronisation.
+
+### `std.syntax`
+
+The standard syntax service contains utilities for building a recursive descent parser.
+
+### `std.data`
+
+The standard data service deals with typed data values.
+These immutable values are designed to be easily transported over the wire.

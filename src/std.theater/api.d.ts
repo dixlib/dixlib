@@ -34,8 +34,7 @@ declare module "std.theater" {
      *
      * @returns Mixin function for role classes of a particular actor
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-    Role<A extends Theater.Actor, S extends {} = {}>(): Fx.Mixin<Theater.Role<A>, S>
+    Role<A extends Theater.Actor, S extends {} = object>(): Fx.Mixin<Theater.Role<A>, S>
     /**
      * Test whether it is an actor.
      *

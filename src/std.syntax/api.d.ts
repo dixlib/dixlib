@@ -119,7 +119,7 @@ declare module "std.syntax" {
       /**
        * Gathered insignificant tokens.
        */
-      readonly gathered: IterableIterator<Token>
+      readonly gathered: IteratorObject<Token>
       /**
        * Create an error message with token information.
        *

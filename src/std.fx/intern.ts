@@ -4,8 +4,7 @@ export function erroneous(it: unknown): Error {
   return it instanceof Error ? it : new Error(stringify(it))
 }
 
-//biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-export function mixin<M extends {}, S extends {} = {}>(template: Fx.Template<M, S>): Fx.Mixin<M, S> {
+export function mixin<M extends {}, S extends {} = object>(template: Fx.Template<M, S>): Fx.Mixin<M, S> {
   const cache = new WeakMap()
   const marker = Symbol("mixin instance")
   function subclass<C extends Fx.Constructor<S>>(Super: C) {

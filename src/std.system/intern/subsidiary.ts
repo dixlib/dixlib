@@ -28,7 +28,7 @@ class SubsidiaryRole
   protected *initializeRole(bundleStack: Loader.Bindings[]): Theater.Scene<void> {
     yield* super.initializeRole()
     // allocate next available system id from top system (or from the local system if this is the top system)
-    this.#id = future.when(yield allocateNextId())
+    this.#id = future.when<number>(yield allocateNextId())
     const init: Initial = { ancestry: [this.#id, ...superAncestry], dixlib, bundleStack }
     // pass initial info to new worker
     this.#worker = future.when<Kernel.Worker>(yield future.pledge(kernel.startWorker(mainURL, init)))

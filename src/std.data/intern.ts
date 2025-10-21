@@ -1,10 +1,9 @@
 export { isTypeExpression, parseTypeExpression } from "./intern/language.js"
 export { inflate } from "./intern/space.js"
-export { isType, typeOf } from "./intern/type.js"
-export { loadTypeDefinitions } from "./intern/typedefs.js"
+export { equalType, isType, typeOf } from "./intern/type.js"
 export {
   dictionary,
-  equals,
+  equalValue,
   isComposition,
   isDictionary,
   isList,

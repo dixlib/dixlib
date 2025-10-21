@@ -4,8 +4,7 @@ import type System from "std.system"
 import type Theater from "std.theater"
 import { agency, fn, future, fx, theater } from "../extern.js"
 
-//biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-export function ContainerRole<Home extends System.Container, S extends {} = {}>(): Fx.Mixin<
+export function ContainerRole<Home extends System.Container, S extends {} = object>(): Fx.Mixin<
   System.ContainerRole<Home>,
   S
 > {
@@ -45,7 +44,7 @@ class Context<Home extends System.Container> implements System.Context<Home> {
     return this.#subject
   }
   get listing() {
-    return fn.iterateKeys(this.#components) as IterableIterator<string>
+    return fn.iterateKeys(this.#components) as IteratorObject<string>
   }
   lookup<Item extends System.Component>(key: string): Item | undefined {
     return (key === "" ? this.#subject : this.#components[key]) as Item

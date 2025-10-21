@@ -14,7 +14,7 @@ try {
     loader.provide("std.theater"),
   ])
   news.info("started at %d", start)
-  news.info("services: %o %o %o %o %o %o %o %o %0", agency, data, future, kernel, loader, news, syntax, system, theater)
+  news.info("services: %o %o %o %o %o %o %o %o %o", agency, data, future, kernel, loader, news, syntax, system, theater)
   const subsystemServer = theater.startActor(system.Subsidiary(), [])
   const subsystemClient = theater.startActor(agency.Client(), subsystemServer)
   const subsystem = agency.createAgent(subsystemClient)
@@ -37,8 +37,7 @@ try {
   for (let i = 0; i < 20; ++i) {
     subs[i] = agency.createAgent(theater.startActor(agency.Client(), theater.startActor(system.Subsidiary(), [])))
   }
-  const definitions = await data.loadTypeDefinitions("std.data")
-  const space = await data.inflate(definitions)
+  const space = await data.inflate("std.data")
   news.info("binary hashcode %o", space.hashcode)
   news.info("base64 hashcode %o", await kernel.encodeBase64URI(space.hashcode))
   space.evaluate("Data.Bla(string, string)").match({

@@ -184,7 +184,7 @@ abstract class CueObj {
   get opaque() {
     return this.#opaq
   }
-  abstract flatten(parent: ParentCue): IterableIterator<[LeafCue, ParentCue]>
+  abstract flatten(parent: ParentCue): Generator<[LeafCue, ParentCue]>
   block(parent: ParentCue) {
     if (this.#parentCue !== void 0) {
       throw new Error("cannot block if cue is already pending or used")
@@ -216,7 +216,7 @@ class LeafCue extends CueObj {
     this.#begin = begin
     this.#end = end
   }
-  *flatten(parent: ParentCue): IterableIterator<[LeafCue, ParentCue]> {
+  *flatten(parent: ParentCue): Generator<[LeafCue, ParentCue]> {
     yield [this, parent]
   }
   block(parent: ParentCue): void {
@@ -236,7 +236,7 @@ class LeafCue extends CueObj {
   }
 }
 abstract class ParentCue extends CueObj {
-  protected abstract makeOffspring(): IterableIterator<CueObj>
+  protected abstract makeOffspring(): IteratorObject<CueObj>
   *flatten(grandparent: ParentCue) {
     this.block(grandparent)
     for (const child of this.makeOffspring()) {
@@ -247,7 +247,7 @@ abstract class ParentCue extends CueObj {
 }
 abstract class FosterCue extends ParentCue {
   #child?: CueObj
-  protected *makeOffspring() {
+  protected *makeOffspring(): Generator<CueObj> {
     yield this.#child as CueObj
   }
   protected abstract foster(signal: Future.Signal<unknown>): void
@@ -307,7 +307,7 @@ class CommitCue extends FosterCue {
 }
 abstract class FamilyCue extends ParentCue {
   #children?: Set<CueObj>
-  protected makeOffspring() {
+  protected makeOffspring(): IteratorObject<CueObj> {
     return (this.#children as Set<CueObj>).values()
   }
   protected get children() {

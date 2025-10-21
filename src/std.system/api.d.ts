@@ -22,8 +22,7 @@ declare module "std.system" {
      *
      * @returns Mixin function for container servant classes
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-    ContainerRole<Home extends System.Container, S extends {} = {}>(): Fx.Mixin<System.ContainerRole<Home>, S>
+    ContainerRole<Home extends System.Container, S extends {} = object>(): Fx.Mixin<System.ContainerRole<Home>, S>
     /**
      * Obtain server role class for new subsystems.
      *
@@ -85,7 +84,7 @@ declare module "std.system" {
     /**
      * Obtain the service loader of this system.
      *
-     * This is a convencience operation when a new system requires service providers during start-up.
+     * This is a convencience operation when a new system requires service providers at start-up.
      *
      * @returns Service loader
      */
@@ -135,7 +134,7 @@ declare module "std.system" {
       /**
        * Iterate over keys of contained components.
        */
-      readonly listing: IterableIterator<string>
+      readonly listing: IteratorObject<string>
       /**
        * Find component in this context.
        *

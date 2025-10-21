@@ -26,7 +26,7 @@ declare module "std.loader" {
      * @param options Optional query options
      * @returns An iterable iterator over bound services
      */
-    query(options?: Loader.QueryOptions): IterableIterator<Loader.QueryResult>
+    query(options?: Loader.QueryOptions): IteratorObject<Loader.QueryResult>
   }
   namespace Loader {
     /**
@@ -65,7 +65,7 @@ declare module "std.loader" {
       /**
        * Iterable iterator over names of bound services.
        */
-      readonly serviceNames: IterableIterator<ServiceName>
+      readonly serviceNames: IteratorObject<ServiceName>
       /**
        * Test whether some service is bound.
        *

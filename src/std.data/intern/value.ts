@@ -1,4 +1,5 @@
 import type Data from "std.data"
+import { fn } from "../extern.js"
 
 export function isValue(it: unknown): it is Data.Value {
   switch (typeof it) {
@@ -35,7 +36,7 @@ export function isTuple<T extends Data.ValueSequence = Data.ValueSequence>(it: u
   return it instanceof TupleValue
 }
 
-export function equals<T extends Data.Value>(left: T, right: T): boolean {
+export function equalValue<T extends Data.Value>(left: T, right: T): boolean {
   if (left === right) {
     // identical values are equal values
     return true
@@ -53,7 +54,7 @@ export function equals<T extends Data.Value>(left: T, right: T): boolean {
     for (const ix of left.indices) {
       if (
         (typeof ix === "string" && !right.has(ix)) ||
-        !equals((left as CompositeValue<Data.Index, Data.Value, Data.Composition, {}>).at(ix), right.at(ix))
+        !equalValue((left as CompositeValue<Data.Index, Data.Value, Data.Composition, object>).at(ix), right.at(ix))
       ) {
         return false
       }
@@ -199,13 +200,13 @@ class DictionaryValue<T extends Data.Value> extends CompositeValue<string, T, Da
     return this.#size
   }
   get indices() {
-    return loopKeys(this.shadow)
+    return fn.iterateKeys(this.shadow) as IteratorObject<string>
   }
   get entries() {
-    return loopEntries(this.shadow) as IteratorObject<[string, T]>
+    return fn.iterateEntries(this.shadow) as IteratorObject<[string, T]>
   }
   get members() {
-    return loopValues(this.shadow) as IteratorObject<T>
+    return fn.iterateValues(this.shadow) as IteratorObject<T>
   }
   at(ix: string) {
     return this.shadow[ix]
@@ -232,13 +233,13 @@ class RecordValue<F extends Data.FieldValues> extends CompositeValue<string, F[k
     return this.#size
   }
   get indices() {
-    return loopKeys(this.shadow)
+    return fn.iterateKeys(this.shadow) as IteratorObject<Extract<keyof F, string>>
   }
   get entries() {
-    return loopEntries(this.shadow) as IteratorObject<[string, F[keyof F]]>
+    return fn.iterateEntries(this.shadow) as IteratorObject<[Extract<keyof F, string>, F[keyof F]]>
   }
   get members() {
-    return loopValues(this.shadow) as IteratorObject<F[keyof F]>
+    return fn.iterateValues(this.shadow) as IteratorObject<F[keyof F]>
   }
   at(ix: keyof F) {
     return this.shadow[ix]
@@ -286,19 +287,4 @@ const tupleTypes: Data.TypePattern<Data.Type<Data.Value>[], []> = {
   orelse() {
     throw new Error("expected a tuple type")
   },
-}
-function* loopKeys<T>(it: T): Generator<keyof T & string> {
-  for (const key in it) {
-    yield key
-  }
-}
-function* loopValues<T>(it: T): Generator<T[keyof T & string]> {
-  for (const key in it) {
-    yield it[key]
-  }
-}
-function* loopEntries<T>(it: T): Generator<[keyof T & string, T[keyof T]]> {
-  for (const key in it) {
-    yield [key, it[key]]
-  }
 }

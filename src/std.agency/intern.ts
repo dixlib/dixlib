@@ -4,8 +4,7 @@ import type Fx from "std.fx"
 import type Theater from "std.theater"
 import { fn, fx, news, theater } from "./extern.js"
 
-//biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-export function ServerRole<A extends Agency.Agent, S extends {} = {}>(): Fx.Mixin<Agency.ServerRole<A>, S> {
+export function ServerRole<A extends Agency.Agent, S extends {} = object>(): Fx.Mixin<Agency.ServerRole<A>, S> {
   return AnyServerRoleMixin as Fx.Mixin<Agency.ServerRole<A>, S>
 }
 

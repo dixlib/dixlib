@@ -3,9 +3,21 @@ export function isGeneratorFunction(it: unknown): it is GeneratorFunction {
   return generatorFunctionPrototype.isPrototypeOf(it as object)
 }
 
-export function* iterateKeys<T>(it: T): IterableIterator<keyof T> {
+export function* iterateKeys<T>(it: T): Generator<keyof T> {
   for (const key in it) {
     yield key
+  }
+}
+
+export function* iterateValues<T>(it: T): Generator<T[keyof T]> {
+  for (const key in it) {
+    yield it[key]
+  }
+}
+
+export function* iterateEntries<T>(it: T): Generator<[keyof T, T[keyof T]]> {
+  for (const key in it) {
+    yield [key, it[key]]
   }
 }
 

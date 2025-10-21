@@ -5,8 +5,7 @@ import { doNothing, exit, Play } from "./scene.js"
 import { busyShowing } from "./stage.js"
 import { improvising, initializing, obituary, supervising } from "./unique.js"
 
-//biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-export function Role<A extends Theater.Actor, S extends {} = {}>(): Fx.Mixin<Theater.Role<A>, S> {
+export function Role<A extends Theater.Actor, S extends {} = object>(): Fx.Mixin<Theater.Role<A>, S> {
   return AnyRoleMixin as Fx.Mixin<Theater.Role<A>, S>
 }
 

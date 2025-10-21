@@ -15,11 +15,10 @@ declare module "std.agency" {
   interface Agency {
     /**
      * Mixin function creates classes whose instances are roles for server actors.
-
-    * @returns Mixin function for server role classes
+     *
+     * @returns Mixin function for server role classes
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is proper super type
-    ServerRole<A extends Agency.Agent, S extends {} = {}>(): Fx.Mixin<Agency.ServerRole<A>, S>
+    ServerRole<A extends Agency.Agent, S extends {} = object>(): Fx.Mixin<Agency.ServerRole<A>, S>
     /**
      * Mandatory decorator for action methods in server classes.
      *

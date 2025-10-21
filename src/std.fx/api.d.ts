@@ -21,8 +21,7 @@ declare module "std.fx" {
      * @param template Template function unconditionally subclasses a given superclass
      * @returns Mixin function
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-    mixin<M extends {}, S extends {} = {}>(template: Fx.Template<M, S>): Fx.Mixin<M, S>
+    mixin<M extends {}, S extends {} = object>(template: Fx.Template<M, S>): Fx.Mixin<M, S>
     /**
      * Create a facade that hides implementations behind opaque handles.
      *
@@ -42,9 +41,8 @@ declare module "std.fx" {
     /**
      * A template function adds mixin M to a superclass.
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
     //biome-ignore lint/suspicious/noExplicitAny: any[] works like a charm here
-    type Template<M extends {}, S extends {} = {}, P extends unknown[] = any[]> = <C extends Constructor<S, P>>(
+    type Template<M extends {}, S extends {} = object, P extends unknown[] = any[]> = <C extends Constructor<S, P>>(
       Super: C
     ) => C & Constructor<M, P>
     /**
@@ -53,8 +51,7 @@ declare module "std.fx" {
      * Mixin functions memoize additions to superclasses.
      * Applying mixin M to the same superclass always results in the same subclass.
      */
-    //biome-ignore lint/complexity/noBannedTypes: {} is appropriate supertype
-    interface Mixin<M extends {}, S extends {} = {}> extends Template<M, S> {
+    interface Mixin<M extends {}, S extends {} = object> extends Template<M, S> {
       /**
        * Test whether it implements mixin M.
        *

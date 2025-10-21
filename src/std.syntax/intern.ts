@@ -177,7 +177,7 @@ class Scanner<N extends string> implements Syntax.Scanner {
     const n = this.#source.text.length
     return { kind: terminator, start: n, stop: n }
   }
-  get gathered(): IterableIterator<Syntax.Token> {
+  get gathered() {
     return this.#gathered.values()
   }
   failure(message: string, token: Syntax.Token) {

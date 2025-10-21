@@ -1,14 +1,14 @@
 declare module "std.concurrency" {
-  import Future from "std.future"
+  import type Future from "std.future"
   export default Concurrency
   /**
-   * The concurrency service solves typical synchronization problems, like producer/consumer and mutual exclusion.
+   * The concurrency service solves typical synchronisation problems, like producer/consumer and mutual exclusion.
    */
   interface Concurrency {
     /**
      * Create an exchange that buffers produced items, until the items are consumed.
      *
-     * A zero capacity exchange provides rendezvous synchronization between a producer and a consumer.
+     * A zero capacity exchange provides rendezvous synchronisation between a producer and a consumer.
      * A rendezvous exchange blocks a producer, until a consumer arrives.
      * But it also blocks a consumer, until a producer arrives.
      *

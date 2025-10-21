@@ -109,7 +109,7 @@ declare module "std.future" {
     /**
      * A cue reveals a one-time signal that some actor might be waiting for.
      *
-     * Cues are synchronization primitives.
+     * Cues are synchronisation primitives.
      * Other concepts are built on top of cues.
      */
     //biome-ignore lint/correctness/noUnusedVariables: Cue<T> forms combo with Signal<T>

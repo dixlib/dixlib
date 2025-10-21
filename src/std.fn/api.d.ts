@@ -15,9 +15,23 @@ declare module "std.fn" {
      * Iterate over keys of enumerable properties.
      *
      * @param it Object with enumerable properties
-     * @returns An iterable iterator over property keys
+     * @returns An iterator object over property keys
      */
-    iterateKeys<T>(it: T): IterableIterator<keyof T>
+    iterateKeys<T>(it: T): IteratorObject<keyof T>
+    /**
+     * Iterate over values of enumerable properties.
+     *
+     * @param it Object with enumerable properties
+     * @returns An iterator object over property values
+     */
+    iterateValues<T>(it: T): IteratorObject<T[keyof T]>
+    /**
+     * Iterate over key/value entries of enumerable properties.
+     *
+     * @param it Object with enumerable properties
+     * @returns An iterator object over property keys
+     */
+    iterateEntries<T>(it: T): IteratorObject<[keyof T, T[keyof T]]>
     /**
      * Always return bound receiver.
      *

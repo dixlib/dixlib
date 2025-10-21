@@ -28,5 +28,5 @@ async function startSubsystem(dixlib: string, bundleStack: Loader.Bindings[]) {
   // import "dixlib" with specifier from parent system
   const { default: startSystem }: Default = await import(dixlib)
   // start child system with given bundle stack
-  return startSystem(bundleStack)
+  await startSystem(bundleStack)
 }

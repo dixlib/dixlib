@@ -1,3 +1,4 @@
+import type { ServiceName } from "dixlib"
 import type Data from "std.data"
 import { news } from "../extern.js"
 import { parseTypeExpression, substituteTypeExpressions } from "./language.js"
@@ -17,8 +18,10 @@ import {
   union,
   wildcard,
 } from "./type.js"
+import { loadTypeDefinitions } from "./typedefs.js"
 
-export async function inflate(definitions: Data.TypeDefinitions): Promise<Data.Space> {
+export async function inflate(serviceName: ServiceName): Promise<Data.Space> {
+  const definitions = await loadTypeDefinitions(serviceName)
   const unique = []
   for (const key of Object.keys(definitions).sort()) {
     const definition = definitions[key]
@@ -182,9 +185,14 @@ const evaluator: Data.TypeExpressionPattern<Data.Type<Data.Value>, [Evaluation]>
     throw new Error(evaluation.failure(`unknown ${expression.text}`))
   },
 }
-const basicTypes = { boolean: boolean(), int32: int32(), number: number(), string: string() }
+const basicTypes = {
+  boolean: boolean(),
+  int32: int32(),
+  number: number(),
+  string: string(),
+}
 const extractMacro: Data.TypeExpressionPattern<[ReadonlyArray<Data.TypeExpression>, Data.TypeExpression], []> = {
-  macro(_expression, _p, formals, body) {
+  macro(_expression, _parameters, formals, body) {
     return [formals, body]
   },
   orelse() {
@@ -211,14 +219,6 @@ class Space implements Data.Space {
     // grab type from cache if possible; otherwise evaluate it (which adds the result to the cache)
     const type = this.#cache.get(expression) ?? new Evaluation(this.#definitions, expression, this.#cache).type
     return type as Data.Type<T>
-  }
-  export<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _value: T): Data.Structure {
-    // biome-ignore lint/suspicious/noExplicitAny: explanation
-    return null as any
-  }
-  import<T extends Data.Value>(_expressionSource: Data.TypeExpression | string, _structure: Data.Structure): T {
-    // biome-ignore lint/suspicious/noExplicitAny: explanation>
-    return null as any
   }
 }
 function express(expressionSource: Data.TypeExpression | string): Data.TypeExpression {

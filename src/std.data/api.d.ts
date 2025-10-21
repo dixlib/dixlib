@@ -95,7 +95,15 @@ declare module "std.data" {
      * @param right Right value
      * @returns True if left and right are equal values, otherwise false
      */
-    equals<T extends Data.Value>(left: T, right: T): boolean
+    equalValue<T extends Data.Value>(left: T, right: T): boolean
+    /**
+     * Test type equivalence.
+     *
+     * @param left Left type
+     * @param right Right type
+     * @returns True if left and right are equal types, otherwise false
+     */
+    equalType<T extends Data.Value = Data.Value>(left: Data.Type<T>, right: Data.Type<T>): boolean
     /**
      * Create list value.
      *
@@ -163,19 +171,12 @@ declare module "std.data" {
      */
     parseTypeExpression(text: string, location?: string): Data.TypeExpression
     /**
-     * Load type definitions of a service.
-     *
-     * @param serviceName Service name
-     * @returns Future hint of loaded type definitions
-     */
-    loadTypeDefinitions(serviceName: ServiceName): Promise<Data.TypeDefinitions>
-    /**
      * Inflate a new data space.
      *
-     * @param definitions Type definitions for data space
+     * @param serviceName Name of service that provides the type definitions for the new space
      * @returns Future hint of new data space
      */
-    inflate(definitions: Data.TypeDefinitions): Promise<Data.Space>
+    inflate(serviceName: ServiceName): Promise<Data.Space>
   }
   namespace Data {
     /**
@@ -211,7 +212,7 @@ declare module "std.data" {
        */
       readonly type: Type<C>
       /**
-       * The shadow structure exposes convenient access to the members of this composite value.
+       * The shadow exposes convenient access to the members of this composite value.
        *
        * For example, a list exposes a shadow array with member values.
        */
@@ -602,10 +603,6 @@ declare module "std.data" {
      */
     type TypeDefinitions = { readonly [name: string]: TypeExpression }
     /**
-     * A JSON structure for the transport of data values.
-     */
-    type Structure = null | boolean | number | string | Structure[] | { [key: string]: Structure }
-    /**
      * A space facilitates import and export of data values.
      */
     interface Space {
@@ -629,22 +626,6 @@ declare module "std.data" {
        * @throws An error if the expression cannot be evaluated
        */
       evaluate<T extends Value = Value>(expressionSource: TypeExpression | string): Type<T>
-      /**
-       * Export JSON structure of a value.
-       *
-       * @param expressionSource Type expression that evaluates the type of value, or source text of this expression
-       * @param value Value to export
-       * @returns A JSON structure
-       */
-      export<T extends Value = Value>(expressionSource: TypeExpression | string, value: T): Structure
-      /**
-       * Import value from a JSON structure.
-       *
-       * @param expressionSource Type expression that evaluates the type of value, or source text of this expression
-       * @param structure JSON structure to import
-       * @returns A value
-       */
-      import<T extends Value = Value>(expressionSource: TypeExpression | string, structure: Structure): T
     }
   }
 }
