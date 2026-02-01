@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
