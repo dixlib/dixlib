@@ -18,7 +18,7 @@ export default {
     "src/*/datatype.ts",
   ]),
   output: { sourcemap: true, format: "es", dir: "build" },
-  plugins: [typescript(), terser({ mangle: false }), json()],
+  plugins: [typescript(), terser({ mangle: true }), json()],
 }
 
 async function entryPoints(patterns) {
