@@ -1,7 +1,7 @@
-import type Agency from "std.agency"
-import type Future from "std.future"
 import type Fx from "std.fx"
 import type Theater from "std.theater"
+import type Agency from "std.theater.agency"
+import type Future from "std.theater.future"
 import { fn, fx, news, theater } from "./extern.js"
 
 export function ServerRole<A extends Agency.Agent, S extends {} = object>(): Fx.Mixin<Agency.ServerRole<A>, S> {
@@ -39,7 +39,7 @@ export function createAgent<A extends Agency.Agent>(client: Agency.Client<A>): A
 
 // ----------------------------------------------------------------------------------------------------------------- //
 const facade = fx.createFacade<Agency.Agent, Agency.Client<Agency.Agent>>(
-  "std.system/Agent",
+  "std.theater.agency/Agent",
   new Proxy(Object.create(null), {
     get(_: never, selector: string | symbol) {
       doActionCache[selector] ??= function doAction(this: Agency.Agent, ...parameters: unknown[]) {

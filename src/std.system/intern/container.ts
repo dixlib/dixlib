@@ -1,7 +1,7 @@
-import type Agency from "std.agency"
 import type Fx from "std.fx"
 import type System from "std.system"
 import type Theater from "std.theater"
+import type Agency from "std.theater.agency"
 import { agency, fn, future, fx, theater } from "../extern.js"
 
 export function ContainerRole<Home extends System.Container, S extends {} = object>(): Fx.Mixin<

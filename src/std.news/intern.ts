@@ -1,5 +1,5 @@
-import type Future from "std.future"
 import type News from "std.news"
+import type Future from "std.theater.future"
 import { concurrency } from "./extern.js"
 
 export function debug<P extends unknown[]>(format: string, ...parameters: P) {

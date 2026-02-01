@@ -1,5 +1,5 @@
-import type Concurrency from "std.concurrency"
-import type Future from "std.future"
+import type Concurrency from "std.theater.concurrency"
+import type Future from "std.theater.future"
 import { future } from "./extern.js"
 
 export function createExchange<T>(capacity = Infinity): Concurrency.Exchange<T> {

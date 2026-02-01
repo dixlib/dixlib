@@ -1,5 +1,5 @@
 declare module "std.news" {
-  import Future from "std.future"
+  import type Future from "std.theater.future"
   export default News
   /**
    * The news service provides reporting operations and consumption of reported information.

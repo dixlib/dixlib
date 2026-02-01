@@ -1,84 +1,88 @@
 import type Data from "std.data"
-import { fx } from "../extern.js"
-import { isDictionary, isList, isRecord, isTuple } from "./value.js"
+import type Meta from "std.data.meta"
+import { data, fx } from "../extern.js"
 
-export function isType<T extends Data.Value = Data.Value>(it: unknown): it is Data.Type<T> {
+export function isType<T extends Data.Value = Data.Value>(it: unknown): it is Meta.Type<T> {
   return facade.isHandling(it)
 }
 
-export function typeOf<T extends Data.Value = Data.Value>(value: T): Data.Type<T> {
+export function typeOf<T extends Data.Value = Data.Value>(value: T): Meta.Type<T> {
   switch (typeof value) {
     case "boolean":
-      return booleanType as Data.Type<T>
+      return booleanType as Meta.Type<T>
     case "number":
-      return (value === ~~value ? int32Type : numberType) as Data.Type<T>
+      return (value === ~~value ? int32Type : numberType) as Meta.Type<T>
     case "string":
-      return stringType as Data.Type<T>
+      return stringType as Meta.Type<T>
     case "undefined":
-      return anyType as Data.Type<T>
+      return anyType as Meta.Type<T>
     default:
-      return value.type as Data.Type<T>
+      return value.type as Meta.Type<T>
   }
 }
 
-export function boolean(): Data.Type<boolean> {
+export function equalType(left: Meta.Type<Data.Value>, right: Meta.Type<Data.Value>): boolean {
+  return left === right || facade.expose(left) === facade.expose(right)
+}
+
+export function boolean(): Meta.Type<boolean> {
   return booleanType
 }
 
-export function int32(): Data.Type<number> {
+export function int32(): Meta.Type<number> {
   return int32Type
 }
 
-export function number(): Data.Type<number> {
+export function number(): Meta.Type<number> {
   return numberType
 }
 
-export function string(): Data.Type<string> {
+export function string(): Meta.Type<string> {
   return stringType
 }
 
-export function literal<T extends Data.Literal>(value: T): Data.Type<T> {
-  const weakly = allLiteralTypes.get(value) as WeakRef<Data.Type<T>> | undefined
+export function literal<T extends Data.BasicValue>(value: T): Meta.Type<T> {
+  const weakly = allLiteralTypes.get(value) as WeakRef<Meta.Type<T>> | undefined
   const existing = weakly?.deref()
   if (existing) {
     return existing
   } else {
-    const pristine = facade.handle<Data.Type<T>>(new LiteralDatatype<T>(value))
+    const pristine = facade.handle<Meta.Type<T>>(new LiteralDatatype<T>(value))
     allLiteralTypes.set(value, new WeakRef(pristine))
     literalFinalization.register(pristine, value)
     return pristine
   }
 }
 
-export function list<T extends Data.Value>(elementary: Data.Type<T>): Data.Type<Data.List<T>> {
-  const existing = allListTypes.get(elementary) as Data.Type<Data.List<T>> | undefined
+export function list<T extends Data.Value>(elementary: Meta.Type<T>): Meta.Type<Data.List<T>> {
+  const existing = allListTypes.get(elementary) as Meta.Type<Data.List<T>> | undefined
   if (existing) {
     return existing
   } else {
-    const pristine = facade.handle<Data.Type<Data.List<T>>>(new ListDatatype<T>(elementary))
+    const pristine = facade.handle<Meta.Type<Data.List<T>>>(new ListDatatype<T>(elementary))
     allListTypes.set(elementary, pristine)
     return pristine
   }
 }
 
-export function dictionary<T extends Data.Value>(elementary: Data.Type<T>): Data.Type<Data.Dictionary<T>> {
-  const existing = allDictionaryTypes.get(elementary) as Data.Type<Data.Dictionary<T>> | undefined
+export function dictionary<T extends Data.Value>(elementary: Meta.Type<T>): Meta.Type<Data.Dictionary<T>> {
+  const existing = allDictionaryTypes.get(elementary) as Meta.Type<Data.Dictionary<T>> | undefined
   if (existing) {
     return existing
   } else {
-    const pristine: Data.Type<Data.Dictionary<T>> = facade.handle(new DictionaryDatatype<T>(elementary))
+    const pristine: Meta.Type<Data.Dictionary<T>> = facade.handle(new DictionaryDatatype<T>(elementary))
     allDictionaryTypes.set(elementary, pristine)
     return pristine
   }
 }
 
-export function record<F extends Data.FieldValues>(fields: Data.FieldTypesOf<F>): Data.Type<Data.Record<F>> {
+export function record<F extends Data.FieldValues>(fields: Meta.FieldTypesOf<F>): Meta.Type<Data.Record<F>> {
   const keys = Object.keys(fields).sort()
   const unique = keys.join(" ")
   let existingTypes = allRecordTypes.get(unique)
   if (existingTypes) {
     for (const weakly of existingTypes) {
-      const candidateType = weakly.deref() as unknown as Data.Type<Data.Record<F>>
+      const candidateType = weakly.deref() as unknown as Meta.Type<Data.Record<F>>
       if (candidateType && equalFieldType(fields, candidateType.match(recordFieldTypes))) {
         return candidateType
       }
@@ -87,13 +91,13 @@ export function record<F extends Data.FieldValues>(fields: Data.FieldTypesOf<F>)
     existingTypes = new Set()
     allRecordTypes.set(unique, existingTypes)
   }
-  const pristine = facade.handle<Data.Type<Data.Record<Data.FieldValues>>>(new RecordDatatype(fields, keys))
+  const pristine = facade.handle<Meta.Type<Data.Record<Data.FieldValues>>>(new RecordDatatype(fields, keys))
   existingTypes.add(new WeakRef(pristine))
   recordFinalization.register(pristine, unique)
-  return pristine as unknown as Data.Type<Data.Record<F>>
+  return pristine as unknown as Meta.Type<Data.Record<F>>
 }
 
-export function tuple<T extends Data.ValueSequence>(parts: Data.TypesOf<T>): Data.Type<Data.Tuple<T>> {
+export function tuple<T extends Data.ValueSequence>(parts: Meta.TypesOf<T>): Meta.Type<Data.Tuple<T>> {
   if (parts.length < 2) {
     throw new Error("tuple type requires at least two parts")
   }
@@ -101,20 +105,20 @@ export function tuple<T extends Data.ValueSequence>(parts: Data.TypesOf<T>): Dat
   if (existingTypes) {
     for (const weakly of existingTypes) {
       const candidateType = weakly.deref()
-      if (candidateType && equalTypes(parts as Data.Type<Data.Value>[], candidateType.match(tupleTypes))) {
-        return candidateType as Data.Type<Data.Tuple<T>>
+      if (candidateType && equalTypes(parts as Meta.Type<Data.Value>[], candidateType.match(tupleTypes))) {
+        return candidateType as Meta.Type<Data.Tuple<T>>
       }
     }
   } else {
     allTupleTypes[parts.length - 2] = existingTypes = new Set()
   }
-  const pristine = facade.handle<Data.Type<Data.Tuple<T>>>(new TupleDatatype<T>(parts))
+  const pristine = facade.handle<Meta.Type<Data.Tuple<T>>>(new TupleDatatype<T>(parts))
   existingTypes.add(new WeakRef(pristine))
   tupleFinalization.register(pristine, parts.length)
   return pristine
 }
 
-export function union<T extends Data.ValueSequence>(alternatives: Data.TypesOf<T>): Data.Type<T[number]> {
+export function union<T extends Data.ValueSequence>(alternatives: Meta.TypesOf<T>): Meta.Type<T[number]> {
   const [isOptional, significant] = sortSignificant(alternatives)
   if (significant.length === 1) {
     // no need for a union type when only one significant alternative remains
@@ -123,7 +127,7 @@ export function union<T extends Data.ValueSequence>(alternatives: Data.TypesOf<T
   let existingTypes = allUnionTypes[significant.length - 2]
   if (existingTypes) {
     for (const weakly of existingTypes) {
-      const candidateType = weakly.deref() as Data.Type<Data.Wildcard>
+      const candidateType = weakly.deref() as Meta.Type<Data.Wildcard>
       if (candidateType && equalTypes(significant, candidateType.match(unionAlternatives))) {
         return isOptional ? optional(candidateType) : candidateType
       }
@@ -131,40 +135,36 @@ export function union<T extends Data.ValueSequence>(alternatives: Data.TypesOf<T
   } else {
     allUnionTypes[significant.length - 2] = existingTypes = new Set()
   }
-  const pristine = facade.handle<Data.Type<T[number]>>(new UnionDatatype<T>(significant as Data.TypesOf<T>))
+  const pristine = facade.handle<Meta.Type<T[number]>>(new UnionDatatype<T>(significant as Meta.TypesOf<T>))
   existingTypes.add(new WeakRef(pristine))
   unionFinalization.register(pristine, significant.length)
-  return isOptional ? optional(pristine as Data.Type<Data.Wildcard>) : pristine
+  return isOptional ? optional(pristine as Meta.Type<Data.Wildcard>) : pristine
 }
 
-export function wildcard(): Data.Type<Data.Wildcard> {
+export function wildcard(): Meta.Type<Data.Wildcard> {
   return wildcardType
 }
 
-export function optional<T extends Data.Wildcard>(mandatory: Data.Type<T>): Data.Type<T | undefined> {
+export function optional<T extends Data.Wildcard>(mandatory: Meta.Type<T>): Meta.Type<T | undefined> {
   if (facade.expose(mandatory) instanceof OptionalDatatype) {
     // idempotency: it's not possible to create an optional optional type
     return mandatory
   }
-  const existing = allOptionalTypes.get(mandatory) as Data.Type<T | undefined>
+  const existing = allOptionalTypes.get(mandatory) as Meta.Type<T | undefined>
   if (existing) {
     return existing
   } else {
-    const pristine = facade.handle<Data.Type<T | undefined>>(new OptionalDatatype<T>(mandatory))
+    const pristine = facade.handle<Meta.Type<T | undefined>>(new OptionalDatatype<T>(mandatory))
     allOptionalTypes.set(mandatory, pristine)
     return pristine
   }
 }
 
-export function equalType(left: Data.Type<Data.Value>, right: Data.Type<Data.Value>): boolean {
-  return left === right || facade.expose(left) === facade.expose(right)
-}
-
-export function createDummy(): Data.Type<Data.Value> {
+export function createDummy(): Meta.Type<Data.Value> {
   return facade.handle(dummy)
 }
 
-export function swapDummy(dummyType: Data.Type<Data.Value>, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
+export function swapDummy(dummyType: Meta.Type<Data.Value>, type: Meta.Type<Data.Value>): Meta.Type<Data.Value> {
   if (facade.expose(dummyType) !== dummy) {
     throw new Error("internal error with dummy of type swap")
   }
@@ -179,7 +179,7 @@ export function swapDummy(dummyType: Data.Type<Data.Value>, type: Data.Type<Data
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-const facade = fx.createFacade<Data.Type<Data.Value>, Datatype<Data.Value>>(
+const facade = fx.createFacade<Meta.Type<Data.Value>, Datatype<Data.Value>>(
   "std.data/Type",
   Object.create(Object.prototype, {
     includes: {
@@ -188,7 +188,7 @@ const facade = fx.createFacade<Data.Type<Data.Value>, Datatype<Data.Value>>(
       },
     },
     match: {
-      value<T, P extends unknown[]>(pattern: Data.TypePattern<T, P>, ...parameters: P): T {
+      value<T, P extends unknown[]>(pattern: Meta.TypePattern<T, P>, ...parameters: P): T {
         return facade.expose(this).accept(this, pattern, parameters)
       },
     },
@@ -201,8 +201,8 @@ abstract class Datatype<T extends Data.Value> {
   }
   abstract test(v: Data.Value): v is T
   abstract accept<T, P extends unknown[]>(
-    type: Data.Type<Data.Value>,
-    pattern: Data.TypePattern<T, P>,
+    type: Meta.Type<Data.Value>,
+    pattern: Meta.TypePattern<T, P>,
     parameters: P
   ): T
 }
@@ -216,17 +216,17 @@ const dummy = new (class DummyDatatype extends Datatype<undefined> {
   test(_: Data.Value): _ is undefined {
     throw new Error("internal error with illegal access of dummy type")
   }
-  accept<T, P extends unknown[]>(_type: Data.Type<Data.Value>, _pattern: Data.TypePattern<T, P>, _parameters: P): T {
+  accept<T, P extends unknown[]>(_type: Meta.Type<Data.Value>, _pattern: Meta.TypePattern<T, P>, _parameters: P): T {
     throw new Error("internal error with illegal access of dummy type")
   }
 })()
 function compareDatatype(left: Datatype<Data.Value>, right: Datatype<Data.Value>): number {
   return left === right ? 0 : left.compare(right)
 }
-function compareType(left: Data.Type<Data.Value>, right: Data.Type<Data.Value>): number {
+function compareType(left: Meta.Type<Data.Value>, right: Meta.Type<Data.Value>): number {
   return left === right ? 0 : compareDatatype(facade.expose(left), facade.expose(right))
 }
-const booleanType = facade.handle<Data.Type<boolean>>(
+const booleanType = facade.handle<Meta.Type<boolean>>(
   new (class BooleanDatatype extends Datatype<boolean> {
     protected get order() {
       return 10
@@ -234,12 +234,12 @@ const booleanType = facade.handle<Data.Type<boolean>>(
     test(v: Data.Value): v is boolean {
       return typeof v === "boolean"
     }
-    accept<T, P extends unknown[]>(type: Data.Type<boolean>, pattern: Data.TypePattern<T, P>, parameters: P): T {
+    accept<T, P extends unknown[]>(type: Meta.Type<boolean>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.boolean ? pattern.boolean(type, parameters) : pattern.orelse(type, parameters)
     }
   })()
 )
-const int32Type = facade.handle<Data.Type<number>>(
+const int32Type = facade.handle<Meta.Type<number>>(
   new (class Int32Datatype extends Datatype<number> {
     protected get order() {
       return 20
@@ -247,12 +247,12 @@ const int32Type = facade.handle<Data.Type<number>>(
     test(v: Data.Value): v is number {
       return typeof v === "number" && ~~v === v
     }
-    accept<T, P extends unknown[]>(type: Data.Type<number>, pattern: Data.TypePattern<T, P>, parameters: P): T {
+    accept<T, P extends unknown[]>(type: Meta.Type<number>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.int32 ? pattern.int32(type, parameters) : pattern.orelse(type, parameters)
     }
   })()
 )
-const numberType = facade.handle<Data.Type<number>>(
+const numberType = facade.handle<Meta.Type<number>>(
   new (class NumberDatatype extends Datatype<number> {
     protected get order() {
       return 30
@@ -260,12 +260,12 @@ const numberType = facade.handle<Data.Type<number>>(
     test(v: Data.Value): v is number {
       return Number.isFinite(v)
     }
-    accept<T, P extends unknown[]>(type: Data.Type<number>, pattern: Data.TypePattern<T, P>, parameters: P): T {
+    accept<T, P extends unknown[]>(type: Meta.Type<number>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.number ? pattern.number(type, parameters) : pattern.orelse(type, parameters)
     }
   })()
 )
-const stringType = facade.handle<Data.Type<string>>(
+const stringType = facade.handle<Meta.Type<string>>(
   new (class StringDatatype extends Datatype<string> {
     protected get order() {
       return 40
@@ -273,12 +273,12 @@ const stringType = facade.handle<Data.Type<string>>(
     test(v: Data.Value): v is string {
       return typeof v === "string"
     }
-    accept<T, P extends unknown[]>(type: Data.Type<string>, pattern: Data.TypePattern<T, P>, parameters: P): T {
+    accept<T, P extends unknown[]>(type: Meta.Type<string>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.string ? pattern.string(type, parameters) : pattern.orelse(type, parameters)
     }
   })()
 )
-class LiteralDatatype<T extends Data.Literal> extends Datatype<T> {
+class LiteralDatatype<T extends Data.BasicValue> extends Datatype<T> {
   readonly #value: T
   constructor(value: T) {
     super()
@@ -294,26 +294,26 @@ class LiteralDatatype<T extends Data.Literal> extends Datatype<T> {
         return 120
     }
   }
-  compare(other: LiteralDatatype<Data.Literal>): number {
+  compare(other: LiteralDatatype<Data.BasicValue>): number {
     return super.compare(other) || (this.#value < other.#value ? -1 : this.#value === other.#value ? 0 : 1)
   }
   test(v: Data.Value): v is T {
     return v === this.#value
   }
-  accept<Out, P extends unknown[]>(type: Data.Type<T>, pattern: Data.TypePattern<Out, P>, parameters: P): Out {
+  accept<Out, P extends unknown[]>(type: Meta.Type<T>, pattern: Meta.TypePattern<Out, P>, parameters: P): Out {
     return pattern.literal ? pattern.literal(type, parameters, this.#value) : pattern.orelse(type, parameters)
   }
 }
-const allLiteralTypes: Map<Data.Literal, WeakRef<Data.Type<Data.Literal>>> = new Map()
-const literalFinalization = new FinalizationRegistry<Data.Literal>(literalValue => {
+const allLiteralTypes: Map<Data.BasicValue, WeakRef<Meta.Type<Data.BasicValue>>> = new Map()
+const literalFinalization = new FinalizationRegistry<Data.BasicValue>(literalValue => {
   const weakly = allLiteralTypes.get(literalValue)
   if (weakly && !weakly.deref()) {
     allLiteralTypes.delete(literalValue)
   }
 })
 class ListDatatype<T extends Data.Value> extends Datatype<Data.List<T>> {
-  readonly #elementary: Data.Type<T>
-  constructor(elementary: Data.Type<T>) {
+  readonly #elementary: Meta.Type<T>
+  constructor(elementary: Meta.Type<T>) {
     super()
     this.#elementary = elementary
   }
@@ -324,7 +324,7 @@ class ListDatatype<T extends Data.Value> extends Datatype<Data.List<T>> {
     return super.compare(other) || compareType(this.#elementary, other.#elementary)
   }
   test(v: Data.Value): v is Data.List<T> {
-    if (isList(v)) {
+    if (data.isList(v)) {
       const elementary = this.#elementary
       for (const member of v.members) {
         if (!elementary.includes(member)) {
@@ -336,17 +336,17 @@ class ListDatatype<T extends Data.Value> extends Datatype<Data.List<T>> {
     return false
   }
   accept<Out, P extends unknown[]>(
-    type: Data.Type<Data.List<T>>,
-    pattern: Data.TypePattern<Out, P>,
+    type: Meta.Type<Data.List<T>>,
+    pattern: Meta.TypePattern<Out, P>,
     parameters: P
   ): Out {
     return pattern.list ? pattern.list(type, parameters, this.#elementary) : pattern.orelse(type, parameters)
   }
 }
-const allListTypes: WeakMap<Data.Type<Data.Value>, Data.Type<Data.List<Data.Value>>> = new WeakMap()
+const allListTypes: WeakMap<Meta.Type<Data.Value>, Meta.Type<Data.List<Data.Value>>> = new WeakMap()
 class DictionaryDatatype<T extends Data.Value> extends Datatype<Data.Dictionary<T>> {
-  readonly #elementary: Data.Type<T>
-  constructor(elementary: Data.Type<T>) {
+  readonly #elementary: Meta.Type<T>
+  constructor(elementary: Meta.Type<T>) {
     super()
     this.#elementary = elementary
   }
@@ -357,7 +357,7 @@ class DictionaryDatatype<T extends Data.Value> extends Datatype<Data.Dictionary<
     return super.compare(other) || compareType(this.#elementary, other.#elementary)
   }
   test(v: Data.Value): v is Data.Dictionary<T> {
-    if (isDictionary<T>(v)) {
+    if (data.isDictionary<T>(v)) {
       const elementary = this.#elementary
       for (const member of v.members) {
         if (!elementary.includes(member)) {
@@ -369,8 +369,8 @@ class DictionaryDatatype<T extends Data.Value> extends Datatype<Data.Dictionary<
     return false
   }
   accept<Out, P extends unknown[]>(
-    type: Data.Type<Data.Dictionary<T>>,
-    pattern: Data.TypePattern<Out, P>,
+    type: Meta.Type<Data.Dictionary<T>>,
+    pattern: Meta.TypePattern<Out, P>,
     parameters: P
   ): Out {
     return pattern.dictionary
@@ -378,11 +378,11 @@ class DictionaryDatatype<T extends Data.Value> extends Datatype<Data.Dictionary<
       : pattern.orelse(type, parameters)
   }
 }
-const allDictionaryTypes: WeakMap<Data.Type<Data.Value>, Data.Type<Data.Dictionary<Data.Value>>> = new WeakMap()
+const allDictionaryTypes: WeakMap<Meta.Type<Data.Value>, Meta.Type<Data.Dictionary<Data.Value>>> = new WeakMap()
 class RecordDatatype<F extends Data.FieldValues> extends Datatype<Data.Record<F>> {
-  readonly #fields: Data.FieldTypesOf<F>
+  readonly #fields: Meta.FieldTypesOf<F>
   readonly #sortedKeys: string[]
-  constructor(fields: Data.FieldTypesOf<F>, sortedKeys: string[]) {
+  constructor(fields: Meta.FieldTypesOf<F>, sortedKeys: string[]) {
     super()
     this.#fields = fields
     this.#sortedKeys = sortedKeys
@@ -412,7 +412,7 @@ class RecordDatatype<F extends Data.FieldValues> extends Datatype<Data.Record<F>
     return 0
   }
   test(v: Data.Value): v is Data.Record<F> {
-    if (isRecord(v)) {
+    if (data.isRecord(v)) {
       const shadow = v.shadow
       const fieldTypes = this.#fields
       for (const selector in fieldTypes) {
@@ -425,14 +425,14 @@ class RecordDatatype<F extends Data.FieldValues> extends Datatype<Data.Record<F>
     return false
   }
   accept<Out, P extends unknown[]>(
-    type: Data.Type<Data.Record<F>>,
-    pattern: Data.TypePattern<Out, P>,
+    type: Meta.Type<Data.Record<F>>,
+    pattern: Meta.TypePattern<Out, P>,
     parameters: P
   ): Out {
     return pattern.record ? pattern.record(type, parameters, this.#fields) : pattern.orelse(type, parameters)
   }
 }
-const allRecordTypes: Map<string, Set<WeakRef<Data.Type<Data.Record<Data.FieldValues>>>>> = new Map()
+const allRecordTypes: Map<string, Set<WeakRef<Meta.Type<Data.Record<Data.FieldValues>>>>> = new Map()
 const recordFinalization = new FinalizationRegistry<string>(tag => {
   const recordTypes = allRecordTypes.get(tag)
   if (recordTypes) {
@@ -446,7 +446,7 @@ const recordFinalization = new FinalizationRegistry<string>(tag => {
     }
   }
 })
-const recordFieldTypes: Data.TypePattern<Data.FieldTypesOf<Data.FieldValues>, []> = {
+const recordFieldTypes: Meta.TypePattern<Meta.FieldTypesOf<Data.FieldValues>, []> = {
   record(_type, _parameters, fieldTypes) {
     return fieldTypes
   },
@@ -454,7 +454,7 @@ const recordFieldTypes: Data.TypePattern<Data.FieldTypesOf<Data.FieldValues>, []
     throw new Error("expected a record type")
   },
 }
-function equalFieldType(left: Data.FieldTypesOf<Data.FieldValues>, right: Data.FieldTypesOf<Data.FieldValues>) {
+function equalFieldType(left: Meta.FieldTypesOf<Data.FieldValues>, right: Meta.FieldTypesOf<Data.FieldValues>) {
   for (const key in left) {
     if (!equalType(left[key], right[key])) {
       return false
@@ -463,8 +463,8 @@ function equalFieldType(left: Data.FieldTypesOf<Data.FieldValues>, right: Data.F
   return true
 }
 class TupleDatatype<T extends Data.ValueSequence> extends Datatype<Data.Tuple<T>> {
-  readonly #parts: Data.TypesOf<T>
-  constructor(parts: Data.TypesOf<T>) {
+  readonly #parts: Meta.TypesOf<T>
+  constructor(parts: Meta.TypesOf<T>) {
     super()
     this.#parts = parts
   }
@@ -485,7 +485,7 @@ class TupleDatatype<T extends Data.ValueSequence> extends Datatype<Data.Tuple<T>
     return 0
   }
   test(v: Data.Value): v is Data.Tuple<T> {
-    if (isTuple(v)) {
+    if (data.isTuple(v)) {
       const shadow = v.shadow
       const partTypes = this.#parts
       if (shadow.length === partTypes.length) {
@@ -500,14 +500,14 @@ class TupleDatatype<T extends Data.ValueSequence> extends Datatype<Data.Tuple<T>
     return false
   }
   accept<Out, P extends unknown[]>(
-    type: Data.Type<Data.Tuple<T>>,
-    pattern: Data.TypePattern<Out, P>,
+    type: Meta.Type<Data.Tuple<T>>,
+    pattern: Meta.TypePattern<Out, P>,
     parameters: P
   ): Out {
     return pattern.tuple ? pattern.tuple(type, parameters, this.#parts) : pattern.orelse(type, parameters)
   }
 }
-const allTupleTypes: Set<WeakRef<Data.Type<Data.Tuple<Data.ValueSequence>>>>[] = []
+const allTupleTypes: Set<WeakRef<Meta.Type<Data.Tuple<Data.ValueSequence>>>>[] = []
 const tupleFinalization = new FinalizationRegistry<number>(n => {
   const tupleTypes = allTupleTypes[n - 2]
   if (tupleTypes) {
@@ -518,17 +518,17 @@ const tupleFinalization = new FinalizationRegistry<number>(n => {
     }
   }
 })
-const tupleTypes: Data.TypePattern<Data.Type<Data.Value>[], []> = {
-  tuple(_type, _p, types) {
-    return types as Data.Type<Data.Value>[]
+const tupleTypes: Meta.TypePattern<Meta.Type<Data.Value>[], []> = {
+  tuple(_type, _parameters, types) {
+    return types as Meta.Type<Data.Value>[]
   },
   orelse() {
     throw new Error("expected a tuple type")
   },
 }
 class UnionDatatype<T extends Data.ValueSequence> extends Datatype<T[number]> {
-  readonly #alternatives: Data.TypesOf<T>
-  constructor(alternatives: Data.TypesOf<T>) {
+  readonly #alternatives: Meta.TypesOf<T>
+  constructor(alternatives: Meta.TypesOf<T>) {
     super()
     this.#alternatives = alternatives
   }
@@ -556,11 +556,11 @@ class UnionDatatype<T extends Data.ValueSequence> extends Datatype<T[number]> {
     }
     return false
   }
-  accept<Out, P extends unknown[]>(type: Data.Type<T[number]>, pattern: Data.TypePattern<Out, P>, parameters: P): Out {
+  accept<Out, P extends unknown[]>(type: Meta.Type<T[number]>, pattern: Meta.TypePattern<Out, P>, parameters: P): Out {
     return pattern.union ? pattern.union(type, parameters, this.#alternatives) : pattern.orelse(type, parameters)
   }
 }
-const allUnionTypes: Set<WeakRef<Data.Type<Data.ValueSequence[number]>>>[] = []
+const allUnionTypes: Set<WeakRef<Meta.Type<Data.ValueSequence[number]>>>[] = []
 const unionFinalization = new FinalizationRegistry<number>(n => {
   const union = allUnionTypes[n - 2]
   if (union) {
@@ -571,27 +571,27 @@ const unionFinalization = new FinalizationRegistry<number>(n => {
     }
   }
 })
-const unionAlternatives: Data.TypePattern<Data.Type<Data.Value>[], []> = {
-  union(_type, _p, alternatives) {
-    return alternatives as Data.Type<Data.Value>[]
+const unionAlternatives: Meta.TypePattern<Meta.Type<Data.Value>[], []> = {
+  union(_type, _parameters, alternatives) {
+    return alternatives as Meta.Type<Data.Value>[]
   },
   orelse() {
     throw new Error("expected a union type")
   },
 }
-function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boolean, Data.Type<Data.Wildcard>[]] {
+function sortSignificant(alternatives: Meta.TypesOf<Data.ValueSequence>): [boolean, Meta.Type<Data.Wildcard>[]] {
   let isOptional = false
   let isWildcard = false
   let isBoolean = false
   let isInt32 = false
   let isNumber = false
   let isString = false
-  const literalTypes = new Map<Data.Literal, Data.Type<Data.Literal>>()
-  const listTypes = new Set<Data.Type<Data.List<Data.Value>>>()
-  const dictionaryTypes = new Set<Data.Type<Data.Dictionary<Data.Value>>>()
-  const recordTypes = new Set<Data.Type<Data.Record<Data.FieldValues>>>()
-  const tupleTypes = new Set<Data.Type<Data.Tuple<Data.ValueSequence>>>()
-  const addAlternative: Data.TypePattern<void, []> = {
+  const literalTypes = new Map<Data.BasicValue, Meta.Type<Data.BasicValue>>()
+  const listTypes = new Set<Meta.Type<Data.List<Data.Value>>>()
+  const dictionaryTypes = new Set<Meta.Type<Data.Dictionary<Data.Value>>>()
+  const recordTypes = new Set<Meta.Type<Data.Record<Data.FieldValues>>>()
+  const tupleTypes = new Set<Meta.Type<Data.Tuple<Data.ValueSequence>>>()
+  const addAlternative: Meta.TypePattern<void, []> = {
     boolean() {
       isBoolean = true
     },
@@ -604,22 +604,22 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
     string() {
       isString = true
     },
-    literal(t, _p, v) {
-      literalTypes.set(v, t)
+    literal(type, _parameters, v) {
+      literalTypes.set(v, type)
     },
-    list(t) {
-      listTypes.add(t)
+    list(type) {
+      listTypes.add(type)
     },
-    dictionary(t) {
-      dictionaryTypes.add(t)
+    dictionary(types) {
+      dictionaryTypes.add(types)
     },
-    record(t) {
-      recordTypes.add(t as unknown as Data.Type<Data.Record<Data.FieldValues>>)
+    record(types) {
+      recordTypes.add(types as unknown as Meta.Type<Data.Record<Data.FieldValues>>)
     },
-    tuple(t) {
-      tupleTypes.add(t)
+    tuple(types) {
+      tupleTypes.add(types)
     },
-    union(_t, _parameters, nestedAlternatives) {
+    union(_type, _parameters, nestedAlternatives) {
       for (const alternative of nestedAlternatives) {
         alternative.match(addAlternative)
       }
@@ -627,7 +627,7 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
     wildcard() {
       isWildcard = true
     },
-    optional(_t, _parameters, mandatory) {
+    optional(_type, _parameters, mandatory) {
       isOptional = true
       mandatory.match(addAlternative)
     },
@@ -638,7 +638,7 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
   for (const type of alternatives) {
     type.match(addAlternative)
   }
-  const significant: Data.Type<Data.Wildcard>[] = []
+  const significant: Meta.Type<Data.Wildcard>[] = []
   if (isWildcard) {
     significant.push(wildcardType)
   } else {
@@ -677,12 +677,12 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
     }
     if (literalNumbers.length) {
       for (const n of literalNumbers.sort((n, m) => n - m)) {
-        significant.push(literalTypes.get(n) as Data.Type<Data.Literal>)
+        significant.push(literalTypes.get(n) as Meta.Type<Data.BasicValue>)
       }
     }
     if (literalStrings.length) {
       for (const s of literalStrings.sort()) {
-        significant.push(literalTypes.get(s) as Data.Type<Data.Literal>)
+        significant.push(literalTypes.get(s) as Meta.Type<Data.BasicValue>)
       }
     }
     for (const listType of [...listTypes].sort(compareType)) {
@@ -700,7 +700,7 @@ function sortSignificant(alternatives: Data.TypesOf<Data.ValueSequence>): [boole
   }
   return [isOptional, significant]
 }
-const wildcardType = facade.handle<Data.Type<Data.Wildcard>>(
+const wildcardType = facade.handle<Meta.Type<Data.Wildcard>>(
   new (class WildcardDatatype extends Datatype<Data.Wildcard> {
     protected get order() {
       return 9_999_999
@@ -708,14 +708,14 @@ const wildcardType = facade.handle<Data.Type<Data.Wildcard>>(
     test(v: Data.Value): v is Data.Wildcard {
       return v !== void 0
     }
-    accept<T, P extends unknown[]>(type: Data.Type<Data.Wildcard>, pattern: Data.TypePattern<T, P>, parameters: P): T {
+    accept<T, P extends unknown[]>(type: Meta.Type<Data.Wildcard>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.wildcard ? pattern.wildcard(type, parameters) : pattern.orelse(type, parameters)
     }
   })()
 )
 class OptionalDatatype<T extends Data.Wildcard> extends Datatype<T | undefined> {
-  readonly #mandatory: Data.Type<T>
-  constructor(mandatory: Data.Type<T>) {
+  readonly #mandatory: Meta.Type<T>
+  constructor(mandatory: Meta.Type<T>) {
     super()
     this.#mandatory = mandatory
   }
@@ -729,16 +729,16 @@ class OptionalDatatype<T extends Data.Wildcard> extends Datatype<T | undefined> 
     return v === void 0 || this.#mandatory.includes(v)
   }
   accept<Out, P extends unknown[]>(
-    type: Data.Type<T | undefined>,
-    pattern: Data.TypePattern<Out, P>,
+    type: Meta.Type<T | undefined>,
+    pattern: Meta.TypePattern<Out, P>,
     parameters: P
   ): Out {
     return pattern.optional ? pattern.optional(type, parameters, this.#mandatory) : pattern.orelse(type, parameters)
   }
 }
-const allOptionalTypes: WeakMap<Data.Type<Data.Wildcard>, Data.Type<Data.Value>> = new WeakMap()
+const allOptionalTypes: WeakMap<Meta.Type<Data.Wildcard>, Meta.Type<Data.Value>> = new WeakMap()
 const anyType = optional(wildcardType)
-function equalTypes(left: Data.Type<Data.Value>[], right: Data.Type<Data.Value>[]) {
+function equalTypes(left: Meta.Type<Data.Value>[], right: Meta.Type<Data.Value>[]) {
   if (left.length === right.length) {
     for (let i = 0; i < left.length; ++i) {
       if (!equalType(left[i], right[i])) {

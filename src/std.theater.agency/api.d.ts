@@ -1,10 +1,10 @@
-declare module "std.agency" {
-  import type Future from "std.future"
+declare module "std.theater.agency" {
+  import type Future from "std.theater.future"
   import type Fx from "std.fx"
   import type Theater from "std.theater"
   export default Agency
   /**
-   * The agency service offers operations to use agents.
+   * The theater agency service offers operations to use agents.
    *
    * Agents are active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
    *

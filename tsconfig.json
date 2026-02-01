@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig-base.json",
-  "exclude": ["./platform"],
+  "exclude": ["./nodejs-kernel"],
   "compilerOptions": {
     "target": "esnext",
     "rootDir": "./src",

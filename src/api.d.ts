@@ -1,8 +1,8 @@
-/// <reference path="./std.agency/api.d.ts" />
-/// <reference path="./std.concurrency/api.d.ts" />
 /// <reference path="./std.data/api.d.ts" />
+/// <reference path="./std.data.definition/api.d.ts" />
+/// <reference path="./std.data.meta/api.d.ts" />
+/// <reference path="./std.data.portability/api.d.ts" />
 /// <reference path="./std.fn/api.d.ts" />
-/// <reference path="./std.future/api.d.ts" />
 /// <reference path="./std.fx/api.d.ts" />
 /// <reference path="./std.kernel/api.d.ts" />
 /// <reference path="./std.loader/api.d.ts" />
@@ -10,16 +10,22 @@
 /// <reference path="./std.syntax/api.d.ts" />
 /// <reference path="./std.system/api.d.ts" />
 /// <reference path="./std.theater/api.d.ts" />
+/// <reference path="./std.theater.agency/api.d.ts" />
+/// <reference path="./std.theater.concurrency/api.d.ts" />
+/// <reference path="./std.theater.future/api.d.ts" />
 declare module "dixlib" {
-  import type Agency from "std.agency"
-  import type Concurrency from "std.concurrency"
+  import type Agency from "std.theater.agency"
+  import type Concurrency from "std.theater.concurrency"
   import type Data from "std.data"
+  import type Definition from "std.data.definition"
   import type Fn from "std.fn"
-  import type Future from "std.future"
+  import type Future from "std.theater.future"
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
   import type Loader from "std.loader"
+  import type Meta from "std.data.meta"
   import type News from "std.news"
+  import type Portability from "std.data.portability"
   import type Syntax from "std.syntax"
   import type System from "std.system"
   import type Theater from "std.theater"
@@ -29,11 +35,11 @@ declare module "dixlib" {
    * This interface is intended to be augmented in bundles that define services.
    */
   export interface Service {
-    readonly "std.agency": Agency
-    readonly "std.concurrency": Concurrency
     readonly "std.data": Data
+    readonly "std.data.definition": Definition
+    readonly "std.data.meta": Meta
+    readonly "std.data.portability": Portability
     readonly "std.fn": Fn
-    readonly "std.future": Future
     readonly "std.fx": Fx
     readonly "std.kernel": Kernel
     readonly "std.loader": Loader
@@ -41,6 +47,9 @@ declare module "dixlib" {
     readonly "std.syntax": Syntax
     readonly "std.system": System
     readonly "std.theater": Theater
+    readonly "std.theater.agency": Agency
+    readonly "std.theater.concurrency": Concurrency
+    readonly "std.theater.future": Future
   }
   /**
    * A service name at compile time is restricted to known services.

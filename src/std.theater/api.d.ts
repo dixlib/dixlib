@@ -1,5 +1,5 @@
 declare module "std.theater" {
-  import type Future from "std.future"
+  import type Future from "std.theater.future"
   import type Fx from "std.fx"
   export default Theater
   /**

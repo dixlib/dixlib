@@ -1,8 +1,8 @@
-declare module "std.concurrency" {
-  import type Future from "std.future"
+declare module "std.theater.concurrency" {
+  import type Future from "std.theater.future"
   export default Concurrency
   /**
-   * The concurrency service solves typical synchronisation problems, like producer/consumer and mutual exclusion.
+   * The theater concurrency service solves typical synchronisation problems, like producer/consumer and mutual exclusion.
    */
   interface Concurrency {
     /**

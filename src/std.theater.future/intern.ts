@@ -1,5 +1,5 @@
-import type Future from "std.future"
 import type Fx from "std.fx"
+import type Future from "std.theater.future"
 import { fx } from "./extern.js"
 
 export function isCue<T>(it: unknown): it is Future.Cue<T> {
@@ -142,7 +142,7 @@ export function commit<T>(cue: Future.Cue<T>, effect: Future.Reveal<T>): Future.
 
 // ----------------------------------------------------------------------------------------------------------------- //
 const facade: Fx.Facade<Future.Cue<unknown>, CueObj> = fx.createFacade<Future.Cue<unknown>, CueObj>(
-  "std.future/Cue",
+  "std.theater.future/Cue",
   Object.create(Object.prototype, {
     isUnused: {
       get() {

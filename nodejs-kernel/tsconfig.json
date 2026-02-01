@@ -1,12 +1,12 @@
 {
-  "extends": "../../tsconfig-base.json",
+  "extends": "../tsconfig-base.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./build",
     "lib": ["ESNext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "typeRoots": ["../../src", "../../node_modules/@types"],
+    "typeRoots": ["../src", "../node_modules/@types"],
     "types": ["api", "node"],
     "tsBuildInfoFile": "./build/tsconfig.buildinfo"
   }

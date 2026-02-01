@@ -5,7 +5,11 @@ export const definitions = {
   "Data.Maybe": "a=* a?",
   "Data.List": "a=*? [a]",
   "Data.Dictionary": "a=*? <a>",
+  "Data.InfList": "Data.List(Data.InfList)",
   "Data.Pair": "a=*? b=*? (a,b)",
   "Data.BinTree": "a=*? Data.Maybe({left:Data.BinTree(a),right:Data.BinTree(a),value:a})",
-  "Data.Bla": "a=*? b=*? a|b",
+  "Data.Bla": "a=*? b=*? Data.Bla2(a,b)",
+  "Data.Bla2": "a=*? b=*? a|b",
+  "D.S": "string",
+  "D.B": "boolean",
 }

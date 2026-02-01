@@ -10,7 +10,7 @@ declare module "std.syntax" {
      * @param patterns Pattern definitions
      * @returns A lexicon
      */
-    createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<keyof L & string>
+    createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<Extract<keyof L, string>>
     /**
      * Create a parser for given language.
      *

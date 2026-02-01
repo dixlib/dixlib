@@ -1,7 +1,7 @@
-import type Agency from "std.agency"
 import type News from "std.news"
 import type System from "std.system"
 import type Theater from "std.theater"
+import type Agency from "std.theater.agency"
 import { version as publishedVersion } from "../../../package.json" with { type: "json" }
 import { agency, future, kernel, news, loader as systemLoader, theater } from "../extern.js"
 import { ContainerRole } from "./container.js"

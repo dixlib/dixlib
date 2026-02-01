@@ -128,18 +128,45 @@ The standard utilities of `dixlib` are simple tools for common problems e.g., cl
 JavaScript was originally invented for web browsers, but it can now be found in all kinds of environments.
 The operations of the standard kernel cover functionality that is not part of JavaScript, even though common JavaScript environments implement it e.g., multithreading with workers.
 
+### `std.syntax`
+
+The standard syntax service contains utilities for building a recursive descent parser.
+
+### `std.data`
+
+The standard data service deals with typed data values.
+These immutable values are designed to be easily transported over the wire.
+
+### `std.data.definition`
+
+The standard data definition service implements a language for type definitions.
+
+### `std.data.meta`
+
+The standard data meta service is used to evaluate type expressions.
+The evaluated types are subsequently used to create data values e.g., records and lists.
+
+### `std.data.portability`
+
+The standard data portability service is used to transport values between systems.
+It supports marshalling data values into JSON representations, and unmarshalling these JSON representations back to the original values.
+
 ### `std.theater`
 
 The standard theater is an actor system for JavaScript environments.
 
-### `std.future`
+### `std.theater.future`
 
-The standard future service contains utilities for theater cues.
+The standard theater future service contains utilities for theater cues.
 A theater cue reveals an asynchronous signal that an actor can await.
 
-### `std.agency`
+### `std.theater.concurrency`
 
-The standard agency supports agents i.e., active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
+The standard theater concurrency service provides support for common concurrency scenarios e.g., producer/consumer synchronisation.
+
+### `std.theater.agency`
+
+The standard theater agency supports agents i.e., active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
 Every interaction with an agent result in a JavaScript promise.
 Under the hood, agents use a client/server actor pair to perform the agent actions.
 
@@ -152,16 +179,3 @@ It deploys components and subsystems.
 
 The standard news service is a logging solution.
 Subsystems forward their log messages to the top system.
-
-### `std.concurrency`
-
-The standard concurrency service provides support for common concurrent scenarios e.g., producer/consumer synchronisation.
-
-### `std.syntax`
-
-The standard syntax service contains utilities for building a recursive descent parser.
-
-### `std.data`
-
-The standard data service deals with typed data values.
-These immutable values are designed to be easily transported over the wire.

@@ -1,5 +1,5 @@
 declare module "std.system" {
-  import type Agency from "std.agency"
+  import type Agency from "std.theater.agency"
   import type Fx from "std.fx"
   import type Loader from "std.loader"
   import type News from "std.news"
@@ -47,7 +47,7 @@ declare module "std.system" {
      * A nearby actor lives in this system, but it references a component actor in some other system.
      * Upon creation, the nearby role expects the id of the other system and the path to the component.
      *
-     * @returns A role class for a nearby actor
+     * @returns A role class for a nearby server actor
      */
     NearbyServer<A extends Agency.Agent>(): Theater.RoleClass<Agency.Server<A>, [id: number, path: string]>
     /**

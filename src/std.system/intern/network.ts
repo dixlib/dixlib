@@ -1,8 +1,8 @@
-import type Agency from "std.agency"
-import type Future from "std.future"
 import type Kernel from "std.kernel"
 import type System from "std.system"
 import type Theater from "std.theater"
+import type Agency from "std.theater.agency"
+import type Future from "std.theater.future"
 import { concurrency, future, kernel, news, theater } from "../extern.js"
 import { id } from "./hierarchy.js"
 
@@ -147,7 +147,7 @@ class Portal {
         allocationExchange.tryProduce(allocated)
       } else if ("path" in message && "sequence" in message) {
         // process request message
-        const { path, selector, parameters } = message
+        const { sequence, path, selector, parameters } = message
         const component = rootContext.resolve(path)
         if (!component) {
           news.error('cannot forward request "%s"/%d to missing component "%s"', selector, parameters.length, path)
@@ -155,10 +155,15 @@ class Portal {
           Promise.try(() =>
             //@ts-expect-error: assume the selector is valid (resulting in inert letter or inert action if it's not)
             component[selector](...parameters)
-          ).then(prompt => {
-            const response: Response = { sequence: message.sequence, signal: { prompt } }
-            port.postMessage(response)
-          })
+          )
+            .then(
+              prompt => ({ prompt }),
+              blooper => ({ blooper })
+            )
+            .then(signal => {
+              const response: Response = { sequence, signal }
+              port.postMessage(response)
+            })
         }
       } else if ("path" in message) {
         // process oneway message for system component

@@ -2,28 +2,6 @@ import type { Service, ServiceAspect, ServiceName } from "dixlib"
 import type Loader from "std.loader"
 import type System from "std.system"
 
-// lazy service providers are instantiated on demand
-interface Lazy<Name extends ServiceName> {
-  // promise to load contractor from extern module of a service provider
-  (): Promise<Loader.Contractor<Name>>
-  // if defined, the former lazy provider of this service (below current layer)
-  former?: Lazy<Name>
-}
-
-// loader layers provide service aspects
-interface Layer {
-  // layer id is module specifier of bindings
-  readonly id: string
-  // affected services per aspect
-  readonly aspects: { readonly [A in ServiceAspect]?: Set<ServiceName> }
-}
-
-// edges in dependency graph
-interface DependencyEdges {
-  readonly direct: Set<string>
-  readonly indirect: Set<string>
-}
-
 export default function startSystem(bundleStack: Loader.Bindings[]): Promise<System> {
   if (bootLoader) {
     return Promise.reject(new Error("cannot boot twice"))
@@ -36,6 +14,25 @@ export default function startSystem(bundleStack: Loader.Bindings[]): Promise<Sys
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
+// lazy service providers are instantiated on demand
+interface Lazy<Name extends ServiceName> {
+  // promise to load contractor from extern module of a service provider
+  (): Promise<Loader.Contractor<Name>>
+  // if defined, the former lazy provider of this service (below current layer)
+  former?: Lazy<Name>
+}
+// loader layers provide service aspects
+interface Layer {
+  // layer id is module specifier of bindings
+  readonly id: string
+  // affected services per aspect
+  readonly aspects: { readonly [A in ServiceAspect]?: Set<ServiceName> }
+}
+// edges in dependency graph
+interface DependencyEdges {
+  readonly direct: Set<string>
+  readonly indirect: Set<string>
+}
 let bootLoader: Loader
 async function provideSystem() {
   // bootstrap system loader

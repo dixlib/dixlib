@@ -1,6 +1,6 @@
 import type Syntax from "std.syntax"
 
-export function createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<keyof L & string> {
+export function createLexicon<L extends Syntax.Patterns>(patterns: L): Syntax.Lexicon<Extract<keyof L, string>> {
   return new Lexicon<L>(patterns)
 }
 
@@ -27,7 +27,7 @@ function onDescendingLength(left: string, right: string) {
 const mismatch = Symbol("invalid character")
 const terminator = Symbol("source text terminator")
 // lexicon matches patterns in source texts
-class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<keyof L & string> {
+class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<Extract<keyof L, string>> {
   readonly #kinds: { [Name in keyof L]: symbol }
   readonly #patterns: { [kind: symbol]: string }
   readonly #testers: { [name: string]: Syntax.PatternTester }

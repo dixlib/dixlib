@@ -1,6 +1,6 @@
 import type { Contract, Service } from "dixlib"
 
-export default async ({ use }: Contract<"std.future">): Promise<Service["std.future"]> => {
+export default async ({ use }: Contract<"std.theater.future">): Promise<Service["std.theater.future"]> => {
   ;[fx] = await use("std.fx")
   return import("./intern.js")
 }

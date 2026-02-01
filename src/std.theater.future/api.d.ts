@@ -1,7 +1,7 @@
-declare module "std.future" {
+declare module "std.theater.future" {
   export default Future
   /**
-   * The future service provides operations for cues that reveal an asynchronous signal.
+   * The theater future service provides operations for cues that reveal an asynchronous signal.
    */
   interface Future {
     /**
@@ -12,7 +12,7 @@ declare module "std.future" {
      */
     isCue<T>(it: unknown): it is Future.Cue<T>
     /**
-     * obtain signal prompt, or fail trying.
+     * Obtain signal prompt, or fail trying.
      *
      * @param signal Yielded signal
      * @returns Successful prompt
@@ -112,7 +112,6 @@ declare module "std.future" {
      * Cues are synchronisation primitives.
      * Other concepts are built on top of cues.
      */
-    //biome-ignore lint/correctness/noUnusedVariables: Cue<T> forms combo with Signal<T>
     interface Cue<T> {
       /**
        * Nobody is waiting for an unused cue.

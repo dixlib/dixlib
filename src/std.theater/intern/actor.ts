@@ -1,5 +1,5 @@
-import type Future from "std.future"
 import type Theater from "std.theater"
+import type Future from "std.theater.future"
 import { future, fx, news } from "../extern.js"
 import { Role } from "./role.js"
 import { doNothing, exit, isSceneMethod } from "./scene.js"
