@@ -45,5 +45,9 @@ export function returnTrue(): true {
   return true
 }
 
+export function isInt32(it: unknown): it is number {
+  return ~~(it as number) === it
+}
+
 // ----------------------------------------------------------------------------------------------------------------- //
 const generatorFunctionPrototype = Reflect.getPrototypeOf(function* () {}) as object

@@ -2,42 +2,39 @@ import type Kernel from "std.kernel"
 import type Loader from "std.loader"
 import type System from "std.system"
 import type Theater from "std.theater"
-import type Agency from "std.theater.agency"
-import { agency, future, kernel } from "../extern.js"
-import { type Initial, parentPort } from "../main.js"
-import { ancestry } from "./hierarchy.js"
-import { allocateNextId, associatePort, connectSystems } from "./network.js"
+import { future, kernel, theater } from "../extern.js"
+import { type Initial, inherited } from "../main.js"
+import { ancestry } from "./info.js"
 import { root } from "./root.js"
+import { allocateNextId, associatePort, connectSystems } from "./topnet.js"
 
-export function Subsidiary(): Theater.RoleClass<Agency.Server<System.Subsidiary>, [Loader.Bindings[]]> {
+export function Subsidiary(): Theater.RoleClass<System.Subsidiary, [Loader.Bindings[]]> {
   return SubsidiaryRole
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-// reuse super ancestry of new subsidiaries
-const superAncestry = ancestry()
 // import.meta.url is where extern.js/intern.js of service provider is located! (this file is merged with rollup)
 const mainURL = new URL("./main.js", import.meta.url)
 const dixlib = new URL("../../index.js", import.meta.url).href
-class SubsidiaryRole
-  extends agency.ServerRole<System.Subsidiary>()(Object)
-  implements Agency.Servant<System.Subsidiary>
-{
+class SubsidiaryRole extends theater.Role<System.Subsidiary>()(Object) implements Theater.Script<System.Subsidiary> {
   #id: number
   #worker: Kernel.Worker | undefined
   protected *initializeRole(bundleStack: Loader.Bindings[]): Theater.Scene<void> {
     yield* super.initializeRole()
     // allocate next available system id from top system (or from the local system if this is the top system)
     this.#id = future.when<number>(yield allocateNextId())
-    const init: Initial = { ancestry: [this.#id, ...superAncestry], dixlib, bundleStack }
+    const init: Initial = { ancestry: [this.#id, ...ancestry()], dixlib, bundleStack }
     // pass initial info to new worker
     this.#worker = future.when<Kernel.Worker>(yield future.pledge(kernel.startWorker(mainURL, init)))
     // associate child subsystem with this system
-    associatePort(this.#id, this.#worker.childPort, root())
-    if (!kernel.isUnsupervised()) {
+    associatePort(this.#id, this.#worker.childPort)
+    if (kernel.isSupervised()) {
       // connect child to top system, ensuring all subsystems are connected to the top system
       connectSystems(this.#id, 0)
     }
+    // keep track of all subsidiaries of this system
+    const context = root().lookupContext("subsidiary") as System.ContainerContext
+    context.subject().assign(String(this.#id), this.self)
   }
   protected *disposeRole(): Theater.Scene<void> {
     // terminate worker on disposal
@@ -48,15 +45,11 @@ class SubsidiaryRole
     this.#id = -1
     this.#worker = void 0
   }
-  @agency.Serve *id(): Theater.Scene<number> {
-    return this.#id
-  }
-  @agency.Serve *shutdown(): Theater.Scene {
-    // send termination message; exitSelf is inappropriate because it prevents sending an answer back to the client
-    this.self.terminate()
+  @theater.Play *id(): Theater.Scene {
+    this.return<number>(this.#id)
   }
 }
-// associate supervised subsystem with its parent port in the network
-if (!kernel.isUnsupervised()) {
-  associatePort(ancestry()[1], parentPort, root())
+// associate supervised subsystem with its parent port in the top network
+if (kernel.isSupervised()) {
+  associatePort(ancestry()[1], inherited.parentPort)
 }

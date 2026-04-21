@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
@@ -25,13 +25,13 @@
     "lint": "npx @biomejs/biome check --verbose"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.13",
+    "@biomejs/biome": "^2.4.12",
     "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-terser": "^1.0.0",
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.57.1",
+    "rollup": "^4.60.2",
     "tslib": "^2.8.1",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "workspaces": [
     "nodejs-kernel"

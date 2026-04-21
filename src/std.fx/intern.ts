@@ -1,7 +1,7 @@
 import type Fx from "std.fx"
 
 export function erroneous(it: unknown): Error {
-  return it instanceof Error ? it : new Error(stringify(it))
+  return Error.isError(it) ? it : new Error(stringify(it))
 }
 
 export function mixin<M extends {}, S extends {} = object>(template: Fx.Template<M, S>): Fx.Mixin<M, S> {

@@ -1,8 +1,7 @@
 import type { Contract, Service } from "dixlib"
 
 export default async ({ use }: Contract<"std.system">): Promise<Service["std.system"]> => {
-  ;[agency, concurrency, fn, future, fx, kernel, loader, news, theater] = await use(
-    "std.theater.agency",
+  ;[concurrency, fn, future, fx, kernel, loader, news, theater] = await use(
     "std.theater.concurrency",
     "std.fn",
     "std.theater.future",
@@ -14,8 +13,6 @@ export default async ({ use }: Contract<"std.system">): Promise<Service["std.sys
   )
   return import("./intern.js")
 }
-
-export let agency: Service["std.theater.agency"]
 
 export let concurrency: Service["std.theater.concurrency"]
 

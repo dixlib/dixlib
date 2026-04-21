@@ -10,11 +10,9 @@
 /// <reference path="./std.syntax/api.d.ts" />
 /// <reference path="./std.system/api.d.ts" />
 /// <reference path="./std.theater/api.d.ts" />
-/// <reference path="./std.theater.agency/api.d.ts" />
 /// <reference path="./std.theater.concurrency/api.d.ts" />
 /// <reference path="./std.theater.future/api.d.ts" />
 declare module "dixlib" {
-  import type Agency from "std.theater.agency"
   import type Concurrency from "std.theater.concurrency"
   import type Data from "std.data"
   import type Definition from "std.data.definition"
@@ -47,7 +45,6 @@ declare module "dixlib" {
     readonly "std.syntax": Syntax
     readonly "std.system": System
     readonly "std.theater": Theater
-    readonly "std.theater.agency": Agency
     readonly "std.theater.concurrency": Concurrency
     readonly "std.theater.future": Future
   }

@@ -12,20 +12,31 @@ export function Role<A extends Theater.Actor, S extends {} = object>(): Fx.Mixin
 // ----------------------------------------------------------------------------------------------------------------- //
 const AnyRoleMixin = fx.mixin<Theater.Role<Theater.Actor>>(Super => {
   class Role extends Super implements Theater.Script<Theater.Actor> {
-    protected get self(): Theater.Actor {
-      return busyShowing(this).opaque as Theater.Actor
+    protected get self(): Theater.ActorRef {
+      return busyShowing(this).self as Theater.ActorRef
+    }
+    protected messageContext<ReplyTo extends Theater.Actor = Theater.Actor>(): Theater.MessageContext<ReplyTo> {
+      return busyShowing(this).messageContext<ReplyTo>()
+    }
+    protected return<Result>(result: Result): void {
+      const { sender, correlation } = this.messageContext<Theater.Sender>()
+      if (!sender) {
+        news.warn("missing contextual sender to return result")
+      } else {
+        sender({ correlation }).return<Result>(result)
+      }
     }
     protected exitSelf(): never {
       exit()
     }
-    protected startChild(casting: Theater.Casting<Theater.Actor, unknown[]>): Theater.Actor {
-      return busyShowing(this).startChild(casting).opaque as Theater.Actor
+    protected castChild(casting: Theater.Casting<Theater.Actor, unknown[]>): Theater.ActorRef {
+      return busyShowing(this).startChild(casting).self as Theater.ActorRef
     }
-    protected terminateChild(actor: Theater.Actor): void {
-      busyShowing(this).terminateChild(actor)
+    protected terminateChild(actorRef: Theater.ActorRef): void {
+      busyShowing(this).terminateChild(actorRef)
     }
-    protected monitorHealth(actor: Theater.Actor): void {
-      busyShowing(this).monitorHealth(actor)
+    protected monitorHealth(actorRef: Theater.ActorRef): void {
+      busyShowing(this).monitorHealth(actorRef)
     }
     protected *improviseScene(selector: string | symbol, parameters: unknown[]): Theater.Scene {
       // report an inert letter error; an inert letter is misunderstood, and essentially ignored, by an actor
@@ -47,10 +58,10 @@ const AnyRoleMixin = fx.mixin<Theater.Role<Theater.Actor>>(Super => {
       yield* busyShowing(this).superviseIncident(incident)
     }
     // helper scene for obituary message
-    @Play *[obituary](actor: Theater.Actor): Theater.Scene {
+    @Play *[obituary](actorRef: Theater.ActorRef): Theater.Scene {
       busyShowing(this)
       //@ts-expect-error: access protected method
-      yield* (this as Theater.Role<Theater.Actor>).observeTermination(actor)
+      yield* (this as Theater.Role<Theater.Actor>).observeTermination(actorRef)
     }
     // default death scene
     @Play *terminate(): Theater.Scene {

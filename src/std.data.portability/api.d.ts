@@ -24,7 +24,7 @@ declare module "std.data.portability" {
      * Note that the JSON standard only supports finite numbers.
      * NaN's and Infinities are not part of the standard.
      */
-    type JSON = boolean | number | string | null | JSON[] | { [propertyName: string]: JSON }
+    type JSON = null | boolean | number | string | JSON[] | { [propertyName: string]: JSON }
     /**
      * A portability format knows how to marshall values and how to unmarshall payloads.
      */

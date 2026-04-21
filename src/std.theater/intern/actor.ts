@@ -6,31 +6,30 @@ import { doNothing, exit, isSceneMethod } from "./scene.js"
 import { schedule } from "./stage.js"
 import { improvising, initializing, obituary, poisonPill, supervising } from "./unique.js"
 
-export function isActor<A extends Theater.Actor>(it: unknown): it is A {
-  return facade.isHandling(it)
+export function isActorRef<A extends Theater.Actor = Theater.Actor>(it: unknown): it is Theater.ActorRef<A> {
+  return typeof it === "function" && actorReferenceMarker in it
 }
 
-export function isGhost(actor: Theater.Actor): boolean {
-  return facade.expose(actor).isGhost
+export function isGhostRef(actorRef: Theater.ActorRef): boolean {
+  return dereferenceObj(actorRef).isGhost
 }
 
 export function startActor<A extends Theater.Actor>(
   TopRole: Theater.RoleClass<A, unknown[]>,
   ...parameters: unknown[]
-): A {
-  return director.startChild({ Role: TopRole, parameters, guard: guardToplevel }).opaque as A
+): Theater.ActorRef<A> {
+  return director.startChild({ Role: TopRole, parameters, guard: guardToplevel }).self as Theater.ActorRef<A>
 }
 
-// actor implementations i.e., the objects behind the actor references
 export class ActorObj {
-  // public-facing opaque actor reference
-  #opaq?: Theater.Actor
+  // the reference to this actor object
+  #self?: Theater.ActorRef
   // state and behavior of this actor is combined in a role object
   #role?: Theater.Role<Theater.Actor>
   // an actor must have a supervisor, otherwise it's considered to be a ghost
   #supervisor?: ActorObj
-  // this actor is suspended if count is nonzero
-  #suspendCount: number
+  // when this actor is suspended, it cannot process messages but it can receive them
+  #suspended: boolean
   // an actor is currently in a status, like ready, waiting, idle, etc. (see stage.ts)
   #status?: Set<ActorObj>
   // an actor supervises zero or more family members
@@ -40,6 +39,8 @@ export class ActorObj {
   #inbox?: Set<ActorMsg>
   // if defined, this actor is currently working on a message
   #message?: ActorMsg
+  // if defined, context of current message
+  #context?: Theater.MessageContext
   // if defined, this actor is currently playing a scene to process the message
   #scene?: Theater.Scene
   // if defined, the actor is currently committed to block on a pending cue in the scene performance
@@ -47,7 +48,7 @@ export class ActorObj {
   // if defined, this actor is ready to continue the scene with a signal
   #progress?: Future.Signal<unknown>
   // if defined, the set of actors that are mourning the death of this actor
-  #mourners?: Set<Theater.Actor>
+  #mourners?: Set<ActorObj>
   // create scene to process current message
   #createScene(): Theater.Scene {
     const role = this.#role as Theater.Role<Theater.Actor>
@@ -74,32 +75,30 @@ export class ActorObj {
     if (!this.#supervisor) {
       throw new Error("cannot suspend a ghost")
     }
-    if (this.#suspendCount === 0) {
+    if (!this.#suspended) {
       // if this actor was not suspended, suspend all family members before suspending this actor
       this.#family?.keys().forEach(member => {
         member.#suspend()
       })
     }
-    ++this.#suspendCount
+    this.#suspended = true
     schedule(this)
   }
   #resume() {
     if (!this.#supervisor) {
       throw new Error("cannot resume a ghost")
     }
-    if (this.#suspendCount === 0) {
+    if (!this.#suspended) {
       throw new Error("actor cannot resume if it is not suspended")
     }
-    --this.#suspendCount
-    if (this.#suspendCount === 0) {
-      if (!this.#message && this.#inbox?.size) {
-        // resume with message processing if actor was idle upon original suspension
-        this.#pullMessage()
-      }
-      // if this actor resumes, resume all family members as well
-      this.#family?.keys().forEach(member => {
-        member.#resume()
-      })
+    this.#suspended = false
+    // if this actor resumes, resume all family members as well
+    this.#family?.keys().forEach(member => {
+      member.#resume()
+    })
+    if (!this.#message && this.#inbox?.size) {
+      // resume with message processing if actor was idle upon original suspension
+      this.#pullMessage()
     }
     schedule(this)
   }
@@ -107,7 +106,7 @@ export class ActorObj {
     if (!this.#supervisor) {
       throw new Error("cannot terminate a ghost")
     }
-    if (this.#suspendCount === 0) {
+    if (!this.#suspended) {
       throw new Error("cannot terminate actor when it is not suspended")
     }
     // break bond with supervisor
@@ -115,9 +114,6 @@ export class ActorObj {
     if (!this.#supervisor!.#family!.delete(this)) {
       throw new Error("corrupt supervision hierarchy on termination")
     }
-    const self = this.#opaq as Theater.Actor
-    // reset reference to point to dead letter box
-    facade.reset(self, deadLetterBox)
     // terminate family members
     this.#family?.keys().forEach(member => {
       member.#terminate()
@@ -131,34 +127,35 @@ export class ActorObj {
     //@ts-expect-error: access protected method
     if (this.#role.disposeRole !== doNothing) {
       // start a toplevel zombie actor to dispose of the role; wait with obituaries until disposal completes
-      startActor(ZombieRole, this.#role, self, this.#mourners)
+      startActor(ZombieRole, this.#role, this.#self, this.#mourners)
     } else {
       // send obituaries when actor is officially dead
-      sendObituaries(self, this.#mourners)
+      sendObituaries(this.#self as Theater.ActorRef, this.#mourners)
     }
-    this.#opaq = this.#role = this.#supervisor = this.#family = void 0
+    this.#self = this.#role = this.#supervisor = this.#family = void 0
     this.#inbox = this.#message = this.#scene = this.#rollback = this.#progress = this.#mourners = void 0
   }
   constructor(ActorRole: Theater.RoleClass<Theater.Actor, unknown[]>, parameters: unknown[], supervisor?: ActorObj) {
-    this.#opaq = facade.handle(this)
-    const self = this.#opaq as BasicActor
+    const self = ActorRef.bind(facade.handle(this)) as Theater.ActorRef<BasicActor>
+    Reflect.defineProperty(self, actorReferenceMarker, { value: this })
+    this.#self = self
     this.#role = new ActorRole(...parameters)
     this.#supervisor = supervisor ?? this
-    this.#suspendCount = 0
-    this.#status = this.#family = void 0
-    this.#inbox = this.#message = this.#scene = this.#rollback = this.#progress = this.#mourners = void 0
+    this.#suspended = false
+    this.#status = this.#family = this.#inbox = void 0
+    this.#message = this.#context = this.#scene = this.#rollback = this.#progress = this.#mourners = void 0
     //@ts-expect-error: access protected method
     if (this.#role.initializeRole !== doNothing) {
       // ready to process initialization message
-      self[initializing](parameters)
+      self()[initializing](parameters)
     } else {
       // start as idle actor
       schedule(this)
     }
   }
-  // opaque actor reference
-  get opaque() {
-    return this.#opaq
+  // opaque actor self reference
+  get self() {
+    return this.#self
   }
   // a ghost can never play scenes on stage
   get isGhost() {
@@ -166,16 +163,22 @@ export class ActorObj {
   }
   // a suspended actor cannot play scenes on stage, but that might change in the future
   get isSuspended() {
-    return this.#suspendCount > 0
+    return this.#suspended
   }
   // a blocked actor is waiting for a cue to reveal a signal
   get isBlocked() {
     // when a rollback is defined, the message and scene are also defined
-    return !this.#suspendCount && !!this.#rollback
+    return !this.#suspended && !!this.#rollback
   }
   // a ready actor wants to play on stage
   get isReady() {
-    return !this.#suspendCount && !!this.#message && !this.#rollback
+    return !this.#suspended && !!this.#message && !this.#rollback
+  }
+  messageContext<ReplyTo extends Theater.Actor = Theater.Actor>(): Theater.MessageContext<ReplyTo> {
+    if (!this.#message) {
+      throw new Error("missing contextual message")
+    }
+    return this.#message.context as Theater.MessageContext<ReplyTo>
   }
   isPlaying(it: unknown) {
     return this.#role === it
@@ -193,14 +196,24 @@ export class ActorObj {
       status?.add(this)
     }
   }
-  send(selector: string | symbol, parameters: unknown[]) {
+  assignContext(context: Theater.MessageContext) {
+    if (this.#context) {
+      throw new Error("invalid contextual state")
+    }
+    this.#context = context
+  }
+  send(selector: string | symbol, parameters: unknown[]): Theater.OneWay {
     if (!this.#supervisor) {
       // report dead letter warning; a dead letter is sent to a ghost actor
       news.warn('dead letter: "%s"/%d', String(selector), parameters.length)
     } else {
-      const message = new ActorMsg(selector, parameters)
+      if (!this.#context) {
+        throw new Error("invalid contextual state")
+      }
+      const message = new ActorMsg(selector, parameters, this.#context)
+      this.#context = void 0
       // if actor is suspended or already working on another message, add this message to the inbox
-      if (this.#suspendCount || this.#message) {
+      if (this.#suspended || this.#message) {
         this.#inbox ??= new Set()
         this.#inbox.add(message)
       } else {
@@ -212,7 +225,7 @@ export class ActorObj {
   }
   startChild({ Role, parameters, guard }: Theater.Casting<Theater.Actor, unknown[]>): ActorObj {
     if (!this.#supervisor) {
-      throw new Error("ghost actor cannot spawn new actors")
+      throw new Error("ghost actor cannot start new child actors")
     }
     const member = new ActorObj(Role, parameters, this)
     this.#family ??= new Map()
@@ -224,7 +237,7 @@ export class ActorObj {
     if (!this.#supervisor) {
       throw new Error("ghost actor cannot perform on stage")
     }
-    if (this.#suspendCount > 0) {
+    if (this.#suspended) {
       throw new Error("suspended actor cannot perform on stage")
     }
     if (!this.#message) {
@@ -247,7 +260,7 @@ export class ActorObj {
       this.#scene ??= this.#createScene()
       const intermediate = this.#scene.next(progress)
       if (intermediate.done) {
-        // pull next message from inbox when this message has been proccessed
+        // pull next message from inbox when this message has been processed
         this.#pullMessage()
       } else {
         // either block scene on yielded cue or continue scene with progress when effect is immediate
@@ -274,10 +287,10 @@ export class ActorObj {
       const blooper = fx.erroneous(problem)
       const { selector, parameters } = this.#message as ActorMsg
       this.#message = this.#scene = void 0
-      //biome-ignore lint/style/noNonNullAssertion: supervisor should be defined
-      const supervisor = this.#supervisor!.#opaq as BasicActor
-      const offender = this.#opaq as Theater.Actor
-      supervisor[supervising]({ offender, blooper, selector, parameters })
+      const supervisor = this.#supervisor as ActorObj
+      const supervisorRef = supervisor.#self as Theater.ActorRef<BasicActor>
+      const offender = this.#self as Theater.ActorRef
+      supervisorRef()[supervising]({ offender, blooper, selector, parameters })
     }
     // reschedule actor after stage performance completes, and actor is still alive
     schedule(this)
@@ -287,7 +300,7 @@ export class ActorObj {
     if (!this.#supervisor) {
       throw new Error("ghost actor cannot supervise other actors")
     }
-    const member = facade.expose(incident.offender)
+    const member = dereferenceObj(incident.offender)
     // skip stale supervision when member has already terminated and left the family
     if (member.#supervisor) {
       const guard = this.#family?.get(member)
@@ -305,55 +318,68 @@ export class ActorObj {
       }
     }
   }
-  monitorHealth(actor: Theater.Actor) {
+  monitorHealth(actorRef: Theater.ActorRef) {
     if (!this.#supervisor) {
       throw new Error("ghost actor cannot monitor health of other actors")
     }
     // an actor can try to monitor its own health, but it has no effect
-    if (actor !== this.#opaq) {
-      const actorObj = facade.expose(actor)
-      if (!actorObj.#supervisor) {
+    const self = this.#self as Theater.ActorRef<BasicActor>
+    if (actorRef !== self) {
+      const actorObj = dereferenceObj(actorRef)
+      if (actorObj.isGhost) {
         // send obituary message, because the actor to monitor has already terminated
-        this.send(obituary, [actor])
+        self()[obituary](actorRef)
       } else {
         // this actor mourns the death of the other actor
         actorObj.#mourners ??= new Set()
-        actorObj.#mourners.add(this.#opaq as Theater.Actor)
+        actorObj.#mourners.add(this)
       }
     }
   }
-  terminateChild(actor: Theater.Actor) {
+  terminateChild(actorRef: Theater.ActorRef) {
     if (!this.#supervisor) {
       throw new Error("ghost actor cannot terminate a child actor")
     }
-    const member = facade.expose(actor)
+    const member = dereferenceObj(actorRef)
     if (this.#family?.has(member)) {
-      member.terminateNow()
+      member.#suspend()
+      member.#terminate()
     }
     // else ignore dead or illegal child actor
-  }
-  // utility for synchronous termination
-  terminateNow() {
-    this.#suspend()
-    this.#terminate()
   }
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-// every actor understands basic messages
-interface BasicActor extends Theater.Actor {
-  [initializing](parameters: unknown[]): void
-  [supervising](incident: Theater.Incident<Theater.Actor>): void
-  [obituary](actor: Theater.Actor): void
+// an actor reference is a function, bound to an actor proxy
+function ActorRef(this: Theater.Actor, context?: Theater.MessageContext): Theater.Actor {
+  // assign context for subsequent message
+  facade.expose(this).assignContext(context ? createMessageContext(context) : emptyMessageContext)
+  return this
 }
-// facade hides actor object behind an actor reference
+// a bound reference is marked to distinguish it
+const actorReferenceMarker: unique symbol = Symbol("actor reference")
+// dereference without calling the reference
+function dereferenceObj(actorRef: Theater.ActorRef): ActorObj {
+  //@ts-expect-error: access hidden property of actor reference
+  return actorRef[actorReferenceMarker]
+}
+// every basic actor understands some hidden helper messages
+interface BasicActor extends Theater.Actor {
+  [initializing](parameters: unknown[]): Theater.OneWay
+  [supervising](incident: Theater.Incident<Theater.Actor>): Theater.OneWay
+  [obituary](actor: Theater.ActorRef): Theater.OneWay
+}
+
+// facade hides actor object behind an actor proxy
 const facade = fx.createFacade<Theater.Actor, ActorObj>(
   "std.theater/Actor",
   new Proxy(Object.create(null), {
     get(_: never, selector: string | symbol) {
-      sendMessageCache[selector] ??= function sendMessage(this: Theater.Actor, ...parameters: unknown[]) {
-        // send message to this particular actor object
-        facade.expose(this).send(selector, parameters)
+      sendMessageCache[selector] ??= function sendMessage(
+        this: Theater.Actor,
+        ...parameters: unknown[]
+      ): Theater.OneWay {
+        return facade.expose(this).send(selector, parameters)
       }
       return sendMessageCache[selector]
     },
@@ -361,13 +387,15 @@ const facade = fx.createFacade<Theater.Actor, ActorObj>(
 )
 // cache send methods on message selector
 const sendMessageCache = Object.create(null)
-// unique actor messages
-class ActorMsg {
+// an actor object processes contextual messages
+class ActorMsg<A extends Theater.Actor = Theater.Actor> {
   readonly #selector: string | symbol
   readonly #parameters: unknown[]
-  constructor(selector: string | symbol, parameters: unknown[]) {
+  readonly #context: Theater.MessageContext<A>
+  constructor(selector: string | symbol, parameters: unknown[], context: Theater.MessageContext<A>) {
     this.#selector = selector
     this.#parameters = parameters
+    this.#context = context
   }
   get selector(): string | symbol {
     return this.#selector
@@ -375,43 +403,58 @@ class ActorMsg {
   get parameters(): unknown[] {
     return this.#parameters
   }
+  get context(): Theater.MessageContext<A> {
+    return this.#context
+  }
+}
+// reuse empty message context
+const emptyMessageContext = createMessageContext({})
+// create immutable message context
+function createMessageContext(context: Theater.MessageContext): Theater.MessageContext {
+  return Object.preventExtensions(
+    Object.create(null, {
+      sender: { value: context.sender },
+      correlation: { value: context.correlation },
+      transfer: { value: context.transfer },
+    })
+  )
 }
 // the director is the actor object that supervises all toplevel actors
 const director = new ActorObj(Role()(Object), [])
+// strict supervision for toplevel actors
 function* guardToplevel(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
   news.error("toplevel fatality: %o", incident)
   return "punish"
 }
-// dead letter box is a toplevel actor which is terminated immediately
-const deadLetterBox = facade.expose(startActor(Role()(Object)))
-deadLetterBox.terminateNow()
+// report dead letters when an actor terminates with a nonempty inbox
+function reportDeadLetter({ selector, parameters }: ActorMsg) {
+  news.warn('dead letter: "%s"/%d', String(selector), parameters.length)
+}
+// send obituary message to all mourners
+function sendObituaries(actorRef: Theater.ActorRef, mourners?: Set<ActorObj>) {
+  if (mourners?.size) {
+    for (const mournerObj of mourners) {
+      // avoid sending an obituary to ghosts
+      if (!mournerObj.isGhost) {
+        const mournerRef = mournerObj.self as Theater.ActorRef<BasicActor>
+        mournerRef()[obituary](actorRef)
+      }
+    }
+  }
+}
 // a zombie only lives to clean up the mess of some other terminated actor
 class ZombieRole extends Role()(Object) {
   protected *initializeRole(
     mess: Theater.Role<Theater.Actor>,
-    actor: Theater.Actor,
-    mourners?: Set<Theater.Actor>
+    actorRef: Theater.ActorRef,
+    mourners?: Set<ActorObj>
   ): Theater.Scene {
+    yield* super.initializeRole()
     //@ts-expect-error: access protected method
-    yield* mess.disposeRole(actor)
+    yield* mess.disposeRole(actorRef)
     // send obituaries after disposal
-    sendObituaries(actor, mourners)
+    sendObituaries(actorRef, mourners)
     // terminate zombie after clean up
     exit()
-  }
-}
-function reportDeadLetter({ selector, parameters }: ActorMsg) {
-  news.warn('dead letter: "%s"/%d', String(selector), parameters.length)
-}
-function sendObituaries(actor: Theater.Actor, mourners?: Set<Theater.Actor>) {
-  if (mourners?.size) {
-    const parameters = [actor]
-    for (const mourner of mourners) {
-      const mournerObj = facade.expose(mourner)
-      // avoid sending an obituary to ghosts
-      if (!mournerObj.isGhost) {
-        mournerObj.send(obituary, parameters)
-      }
-    }
   }
 }

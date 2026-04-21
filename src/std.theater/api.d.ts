@@ -1,6 +1,7 @@
 declare module "std.theater" {
   import type Future from "std.theater.future"
   import type Fx from "std.fx"
+  import type Kernel from "std.kernel"
   export default Theater
   /**
    * The theater service provides a JavaScript actor system.
@@ -8,8 +9,8 @@ declare module "std.theater" {
    * The theater takes a lot of inspiration from the actor paradigm.
    * However, it is also different in important ways.
    *
-   * * An actor reference is not a portable address, but rather a JavaScript proxy for the 'real' actor object.
-   * * Sending a message to an actor is achieved by invoking the corresponding method on the proxy.
+   * * An actor reference is not a portable address, but a JavaScript function that returns the 'real' actor.
+   * * Sending a message to an actor is achieved by invoking the corresponding method on the actor.
    * * A separate role object encapsulates the transient state and behavior of an actor.
    *
    * Each actor in the theater is supervised by another actor.
@@ -36,17 +37,21 @@ declare module "std.theater" {
      */
     Role<A extends Theater.Actor, S extends {} = object>(): Fx.Mixin<Theater.Role<A>, S>
     /**
-     * Test whether it is an actor.
+     * Test whether it is an actor reference.
+     *
+     * The validity of type hint A, if supplied, is the caller's responsibility.
      *
      * @param it Thing to test
-     * @returns True if it is an actor, otherwise false
+     * @returns True if it is an actor reference, otherwise false
      */
-    isActor<A extends Theater.Actor>(it: unknown): it is A
+    isActorRef<A extends Theater.Actor>(it: unknown): it is Theater.ActorRef<A>
     /**
      * Check whether an actor has been terminated, turning it into a ghost.
-     * @param actor Actor to check
+     *
+     * @param actorRef Reference to actor that should be checked check
+     * @returns True if actor is a ghost, otherwise false
      */
-    isGhost(actor: Theater.Actor): boolean
+    isGhostRef(actorRef: Theater.ActorRef): boolean
     /**
      * Start a new toplevel actor.
      *
@@ -55,22 +60,108 @@ declare module "std.theater" {
      *
      * @param TopRole Role class of new actor
      * @param parameters Construction parameters
-     * @returns A new actor
+     * @returns A reference to the new actor
      */
-    startActor<A extends Theater.Actor, P extends unknown[]>(TopRole: Theater.RoleClass<A, P>, ...parameters: P): A
+    startActor<A extends Theater.Actor, P extends unknown[]>(
+      TopRole: Theater.RoleClass<A, P>,
+      ...parameters: P
+    ): Theater.ActorRef<A>
   }
   namespace Theater {
     /**
-     * An actor is an opaque *reference* to an actor object.
+     * An opaque *reference* to an actor object must be dereferenced to send a message to the actor.
      *
-     * A method invocation sends a message with a selector and parameters to the referenced actor.
+     * After dereferencing, it is necessary to send exactly one message to the actor.
+     */
+    interface ActorRef<A extends Actor = Actor> {
+      /**
+       * Calling an actor reference dereferences it.
+       *
+       * @returns The actor to send one message to
+       */
+      (): A
+      /**
+       * Calling an actor reference dereferences it.
+       *
+       * @param context Context for message that must be sent to the actor
+       * @returns The actor to send one message to
+       */
+      <ReplyTo extends Actor = Actor>(context: MessageContext<ReplyTo>): A
+    }
+    /**
+     * All actors have one thing in common.
+     * You can send a termination message in an attempt to stop the actor.
      */
     interface Actor {
       /**
-       * Request termination of the actor.
+       * Send a termination message.
+       *
+       * This does not necessarily terminate the actor, because an actor can choose to ignore this message.
+       * The default actor response will terminate the actor.
        */
-      terminate(): void
+      terminate(): OneWay
     }
+    /**
+     * The synchronous result of sending an actor message is always undefined.
+     *
+     * Actor messages are one-way, also known as fire-and-forget.
+     */
+    type OneWay = undefined
+    /**
+     * A message context provides extra information about a message that has been sent to an actor.
+     */
+    interface MessageContext<ReplyTo extends Actor = Actor> {
+      /**
+       * The sender of the message to which the processing result, if any, should be returned.
+       */
+      readonly sender?: ActorRef<ReplyTo>
+      /**
+       * A unique correlation id for the sent message.
+       *
+       * When returning a result, the same correlation is also returned.
+       */
+      readonly correlation?: number
+      /**
+       * An array with objects whose ownership is transferred to the receiver of the message.
+       */
+      readonly transfer?: Kernel.Transferable[]
+    }
+    /**
+     * A sender is an actor that expects a result back from a previously sent message.
+     */
+    interface Sender extends Theater.Actor {
+      /**
+       * Return the result of a previously sent message.
+       *
+       * If necessary, use the correlation from the message context to associate the result with a particular message.
+       *
+       * @param result The result
+       */
+      return<Result>(result: Result): Theater.OneWay
+    }
+    /**
+     * A role class defines scene methods for actors.
+     */
+    type RoleClass<A extends Actor, P extends unknown[]> = Fx.Constructor<Role<A>, P>
+    /**
+     * Infer the signatures of scene methods that a role class must implement for an actor.
+     */
+    type Script<A extends Actor> = {
+      readonly [K in keyof A]: A[K] extends (...parameters: infer P) => OneWay ? (...parameters: P) => Scene : never
+    }
+    /**
+     * A scene is a generator over cues.
+     *
+     * Scenes are similar to coroutines.
+     * Actors play a scene on the stage to process a message.
+     *
+     * If a scene yields a cue, the scene waits for the cue to reveal a signal.
+     * The yield expression evaluates to this signal when the scene continues.
+     *
+     * The scene ends when the code returns to the caller.
+     */
+    //biome-ignore lint/suspicious/noExplicitAny: yield any signal
+    type Scene<T = void> = Generator<Future.Cue<unknown>, T, Future.Signal<any>>
     /**
      * A role encapsulates the transient state and behavior of an actor.
      *
@@ -78,50 +169,27 @@ declare module "std.theater" {
      */
     abstract class Role<A extends Actor> implements Script<Actor> {
       /**
-       * Obtain the actor of this role.
+       * Obtain a reference to the actor of this role.
        *
-       * @throws When this role is not played by the busy actor on stage
-       */
-      protected readonly self: A
-      /**
-       * Exit from a scene to terminate the actor.
-       *
-       * Exiting throws an exception that instructs the theater to terminate the actor.
-       */
-      exitSelf(): never
-      /**
-       * Create and supervise a child actor.
-       *
-       * @param casting Casting of new actor
-       * @returns A new actor
        * @throws When the busy actor on stage is not playing this role
        */
-      protected startChild<C extends Actor, P extends unknown[]>(casting: Casting<C, P>): C
+      protected readonly self: ActorRef<A>
       /**
-       * Unconditionally terminate a child actor.
+       * Obtain context of message that is currently being processed by this role.
        *
-       * Only the supervisor is able to terminate an actor unconditionally.
-       *
-       * @param actor A child actor
-       * @throws When the busy actor on stage is not playing this role
-       * @throws When self is not supervising the child actor
-       */
-      protected terminateChild(actor: Actor): void
-      /**
-       * Monitor health of some actor.
-       *
-       * When the actor has terminated, an obituary message is sent to self.
-       * If the actor is already terminated when monitoring starts, an obituary message to self is sent right away.
-       *
-       * When self terminates before the other actor, the obituary message is not sent.
-       *
-       * Health monitoring is idempotent.
-       * Self receives one obituary message regardless how often the health of an actor is monitored.
-       *
-       * @param actor Some actor to monitor
+       * @returns Message context
        * @throws When the busy actor on stage is not playing this role
        */
-      protected monitorHealth(actor: Actor): void
+      protected messageContext<ReplyTo extends Actor = Actor>(): MessageContext<ReplyTo>
+      /**
+       * Reply to sender of message context, if any.
+       *
+       * The sender from the message context should be a {@link Sender}.
+       * If the context does not define a sender, a news warning is issued.
+       *
+       * @throws When the busy actor on stage is not playing this role
+       */
+      protected return<Result>(result: Result): void
       /**
        * Perform the first scene on stage to initialize this role.
        *
@@ -145,10 +213,10 @@ declare module "std.theater" {
        * Disposal code cannot use this.self, because the original actor has been detached from this role.
        * This also excludes other operations e.g., casting child actors while disposing.
        *
-       * @param self Original actor
+       * @param self Reference to original actor
        * @returns Disposal scene
        */
-      protected disposeRole(self: A): Scene
+      protected disposeRole(self: ActorRef<A>): Scene
       /**
        * Improvise when the script of this role does not implement a corresponding scene method.
        *
@@ -164,36 +232,51 @@ declare module "std.theater" {
        *
        * This method should not be called directly by user code.
        *
-       * @param actor Deceased actor
+       * @param actorRef Reference to ghost actor
        */
-      protected observeTermination(actor: Actor): Scene
+      protected observeTermination(actorRef: ActorRef): Scene
+      /**
+       * Terminate the actor itself.
+       *
+       * @throws When the busy actor on stage is not playing this role
+       */
+      protected exitSelf(): never
+      /**
+       * Create and supervise a child actor.
+       *
+       * @param casting Casting of new actor
+       * @returns Reference to a new actor
+       * @throws When the busy actor on stage is not playing this role
+       */
+      protected castChild<C extends Actor, P extends unknown[]>(casting: Casting<C, P>): ActorRef<C>
+      /**
+       * Unconditionally terminate a child actor.
+       *
+       * Only the supervisor is able to terminate an actor unconditionally.
+       *
+       * @param actorRef Reference to a child actor
+       * @throws When the busy actor on stage is not playing this role
+       * @throws When self is not supervising the child actor
+       */
+      protected terminateChild(actorRef: ActorRef): void
+      /**
+       * Monitor health of some actor.
+       *
+       * When the actor has terminated, an obituary message is sent to self.
+       * If the actor is already terminated when monitoring starts, an obituary message to self is sent right away.
+       *
+       * When self terminates before the other actor, the obituary message is not sent.
+       *
+       * Health monitoring is idempotent.
+       * Self receives one obituary message regardless how often the health of an actor is monitored.
+       *
+       * @param actorRef Reference to some actor to monitor
+       * @throws When the busy actor on stage is not playing this role
+       */
+      protected monitorHealth(actorRef: ActorRef): void
       // play default death scene
       terminate(): Scene
     }
-    /**
-     * Infer the signatures of scene methods that a role class must implement for an actor.
-     */
-    type Script<A extends Actor> = {
-      readonly [K in keyof A]: A[K] extends (...parameters: infer P) => void ? (...parameters: P) => Scene : never
-    }
-    /**
-     * A scene is a generator over cues.
-     *
-     * Scenes are similar to coroutines.
-     * Actors play a scene on the stage to process a message.
-     *
-     * If a scene yields a cue, the scene waits for the cue to reveal a signal.
-     * The yield expression evaluates to this signal when the scene continues.
-     *
-     * The scene ends when the code returns to the caller.
-     */
-
-    //biome-ignore lint/suspicious/noExplicitAny: yield any signal
-    type Scene<T = void> = Generator<Future.Cue<unknown>, T, Future.Signal<any>>
-    /**
-     * A role class defines scene methods for actors.
-     */
-    type RoleClass<A extends Actor, P extends unknown[]> = Fx.Constructor<Role<A>, P>
     /**
      * An incident on stage.
      */
@@ -201,7 +284,7 @@ declare module "std.theater" {
       /**
        * Offending actor that caused incident.
        */
-      readonly offender: A
+      readonly offender: ActorRef<A>
       /**
        * Stage error.
        */

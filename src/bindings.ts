@@ -15,7 +15,6 @@ export const service: ServiceBindings = {
   "std.syntax": { specification: true, implementation: true },
   "std.system": { specification: true, implementation: true },
   "std.theater": { specification: true, implementation: true },
-  "std.theater.agency": { specification: true, implementation: true },
   "std.theater.concurrency": { specification: true, implementation: true },
   "std.theater.future": { specification: true, implementation: true },
 }

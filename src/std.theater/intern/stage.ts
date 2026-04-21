@@ -23,7 +23,7 @@ export function schedule(actorObj: ActorObj) {
 }
 
 // either obtain active actor object in some unknown role, or fail when theater is not showing this entertainment
-export function busyShowing(it: unknown) {
+export function busyShowing(it: unknown): ActorObj {
   const [actorObj] = active
   if (actorObj?.isPlaying(it)) {
     return actorObj

@@ -1,9 +1,10 @@
 import type { Contract, Service } from "dixlib"
 
 export default async ({ use }: Contract<"std.data.meta">): Promise<Service["std.data.meta"]> => {
-  ;[data, definition, fx, loader, news] = await use(
+  ;[data, definition, fn, fx, loader, news] = await use(
     "std.data",
     "std.data.definition",
+    "std.fn",
     "std.fx",
     "std.loader",
     "std.news"
@@ -14,6 +15,8 @@ export default async ({ use }: Contract<"std.data.meta">): Promise<Service["std.
 export let data: Service["std.data"]
 
 export let definition: Service["std.data.definition"]
+
+export let fn: Service["std.fn"]
 
 export let fx: Service["std.fx"]
 

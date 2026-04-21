@@ -1,59 +1,40 @@
 declare module "std.system" {
-  import type Agency from "std.theater.agency"
   import type Fx from "std.fx"
   import type Loader from "std.loader"
   import type News from "std.news"
   import type Theater from "std.theater"
   export default System
-  /**
-   * The system service organizes components.
-   *
-   * Components are either actors or agents.
-   *
-   * Systems are themselves organized in a parent/child hierarchy, with a single top system.
-   * The others are direct or indirect subsystems of this top system.
-   *
-   * The top system, its direct and its indrect subsystems form a network.
-   * Every system is able to open a communication portal to another system in this top network.
-   */
   interface System {
     /**
      * Mixin function creates classes for roles of container servants.
      *
-     * @returns Mixin function for container servant classes
+     * @returns Mixin function for container role classes
      */
     ContainerRole<Home extends System.Container, S extends {} = object>(): Fx.Mixin<System.ContainerRole<Home>, S>
     /**
-     * Obtain server role class for new subsystems.
+     * Obtain role class for new subsystems.
      *
      * A subsidiary is an actor in the parent system that 'encapsulates' the subsystem.
      * Upon creation, the subsidiary expects the bindings of the new system.
      *
-     * @returns A role class for a subsidiary server
+     * The subsystem is terminated when the subsidiary terminates.
+     *
+     * @returns A role class for a subsidiary actor
      */
-    Subsidiary(): Theater.RoleClass<Agency.Server<System.Subsidiary>, [bundleStack: Loader.Bindings[]]>
+    Subsidiary(): Theater.RoleClass<System.Subsidiary, [bundleStack: Loader.Bindings[]]>
     /**
      * Obtain role class for nearby actors in the top network.
      *
-     * A nearby actor lives in this system, but it references a component actor in some other system.
+     * A nearby actor lives in this system, but it references a component actor in another system in the top network.
      * Upon creation, the nearby role expects the id of the other system and the path to the component.
      *
      * @returns A role class for a nearby actor
      */
     Nearby<A extends Theater.Actor>(): Theater.RoleClass<A, [id: number, path: string]>
     /**
-     * Obtain role class for nearby server actors in the top network.
-     *
-     * A nearby actor lives in this system, but it references a component actor in some other system.
-     * Upon creation, the nearby role expects the id of the other system and the path to the component.
-     *
-     * @returns A role class for a nearby server actor
-     */
-    NearbyServer<A extends Agency.Agent>(): Theater.RoleClass<Agency.Server<A>, [id: number, path: string]>
-    /**
      * Obtain system version.
      *
-     * @return Version string
+     * @returns Version string
      */
     version(): string
     /**
@@ -62,7 +43,7 @@ declare module "std.system" {
      * The top system identifies itself as zero.
      * All other systems are direct or indirect subsystems, derived from this top system.
      *
-     * @return A number
+     * @returns A number
      */
     id(): number
     /**
@@ -72,15 +53,7 @@ declare module "std.system" {
      *
      * @returns An array with numbers that identify systems
      */
-    ancestry(): [number, ...number[]]
-    /**
-     * Obtain the root context.
-     *
-     * This is the starting point to synchronously find components in this system.
-     *
-     * @returns A context on the root container
-     */
-    root(): System.Context<System.Root>
+    ancestry(): System.Ancestry
     /**
      * Obtain the service loader of this system.
      *
@@ -89,122 +62,43 @@ declare module "std.system" {
      * @returns Service loader
      */
     loader(): Loader
+    /**
+     * Obtain the root context.
+     *
+     * This is the starting point to synchronously find components in this system.
+     *
+     * @returns A context on the root container
+     */
+    root(): System.ContainerContext<System.Container>
+    /**
+     * Send a message to an actor that returns a result.
+     *
+     * @param actorRef Actor reference
+     * @param question Closure that sends the message whose result is returned
+     * @returns A promise of the returned result
+     */
+    ask<A extends Theater.Actor, Result>(
+      actorRef: Theater.ActorRef<A>,
+      question: (actor: A) => Theater.OneWay
+    ): Promise<Result>
   }
   namespace System {
     /**
-     * A system component is either an actor or an agent.
+     * An ancestry identifies the nonempty path from a system, to parent systems, all the way up to the top system.
+     */
+    type Ancestry = [number, ...number[]]
+    /**
+     * A logger reports log messages.
      *
-     * Actors support fire-and-forget semantics whereas agents support request-response semantics.
+     * Every system has a logger component at path "logger".
      */
-    type Component = Theater.Actor | Agency.Agent
-    /**
-     * A container is an agent that holds zero or more components.
-     */
-    interface Container extends Agency.Agent {
+    interface Logger extends Theater.Actor {
       /**
-       * Open a readonly context on this container subject.
+       * Report message.
        *
-       * @returns A readonly context
+       * @param message The message to report
        */
-      view(): Promise<Context<this>>
-      /**
-       * Assign a component in this container.
-       *
-       * @param key Unique key of component in container
-       * @param component The component to assign
-       */
-      assign<Item extends Component>(key: string, component: Item): Promise<void>
-      /**
-       * Mount a container in this container.
-       *
-       * @param key Unique key of container to mount
-       * @param container Agent of container to mount
-       * @returns Context of the mounted container
-       */
-      mount<Home extends Container>(key: string, container: Home): Promise<Context<Home>>
-    }
-    /**
-     * A context offers synchronous, readonly access to the components of a container subject.
-     */
-    interface Context<Subject extends Container = Container> {
-      /**
-       * The container subject whose components are exposed by this context.
-       */
-      readonly subject: Subject
-      /**
-       * Iterate over keys of contained components.
-       */
-      readonly listing: IteratorObject<string>
-      /**
-       * Find component in this context.
-       *
-       * @param key Key of component to find
-       * @returns A component or undefined
-       */
-      lookup<Item extends Component>(key: string): Item | undefined
-      /**
-       * Find context in this context.
-       * @param key Key of context to find
-       * @returns A context or undefined
-       */
-      lookupContext<Home extends Container>(key: string): Context<Home> | undefined
-      /**
-       * Resolve path to component, relative from this context.
-       *
-       * @param path Path to component
-       * @returns The resolved component or undefined
-       */
-      resolve<Item extends Component>(path: string): Item | undefined
-      /**
-       * Resolve path to context, relative from this context.
-       *
-       * @param path Path to context
-       * @returns The resolved context or undefined
-       */
-      resolveContext<Home extends Container>(path: string): Context<Home> | undefined
-    }
-    /**
-     * A container role encapsulates the transient state of a container server.
-     */
-    abstract class ContainerRole<Home extends Container>
-      extends Agency.ServerRole<Container>
-      implements Agency.Servant<Container>
-    {
-      /**
-       * Synchronous assignment.
-       *
-       * @param key Unique key of component
-       * @param component Component actor
-       */
-      protected assignComponent<Item extends Component>(key: string, component: Item): void
-      /**
-       * Synchronous mount.
-       *
-       * @param key Unique key of container
-       * @param context Context of container
-       */
-      protected mountContext<Sub extends Container>(key: string, context: Context<Sub>): void
-      // implementations of container actions
-      view(): Theater.Scene<Context<Home>>
-      assign<A extends Component>(key: string, component: A): Theater.Scene<void>
-      mount<Home extends Container>(key: string, container: Home): Theater.Scene<Context<Home>>
-    }
-    /**
-     * The root container is the subject of the root context.
-     */
-    interface Root extends Container {
-      /**
-       * Unique system id.
-       *
-       * @return System identifier
-       */
-      id(): Promise<number>
-      /**
-       * Obtain ancestry chain.
-       *
-       * @returns One or more system identifiers
-       */
-      ancestry(): Promise<[number, ...number[]]>
+      report<P extends unknown[]>(message: LogMessage<P>): Theater.OneWay
     }
     /**
      * The system logger enriches news messages with an origin.
@@ -213,35 +107,137 @@ declare module "std.system" {
       /**
        * Ancestry chain of system from where log message originates.
        */
-      readonly origin: number[]
+      readonly origin: Ancestry
     }
     /**
-     * A logger reports log messages.
+     * A questioner bridges the gap between actors and callbacks.
      *
-     * Every system has a logger component at path "log".
+     * Every system has a questioner component at path "questioner".
+     *
+     * The {@link System.ask} operation uses a questioner.
      */
-    interface Logger extends Theater.Actor {
+    interface Questioner extends Theater.Sender {
       /**
-       * Report message.
+       * Ask questions with asynchronous answers.
        *
-       * @param message The message to report
+       * @param actorRef Actor reference
+       * @param question Message to send
+       * @param cb Callback on result of message
        */
-      report<P extends unknown[]>(message: LogMessage<P>): void
+      ask<A extends Theater.Actor, Result>(
+        actorRef: Theater.ActorRef<A>,
+        question: (actor: A) => Theater.OneWay,
+        cb: (result: Result) => void
+      ): Theater.OneWay
     }
     /**
-     * A subsidiary agent represents a subsystem.
+     * A container is a component that holds zero or more component actors.
      */
-    interface Subsidiary extends Agency.Agent {
+    interface Container extends Theater.Actor {
+      /**
+       * Get a readonly context on this container subject.
+       *
+       * The context {@link ContainerContext} is returned to the (local) sender.
+       */
+      view(): Theater.OneWay
+      /**
+       * Assign a component actor in this container.
+       *
+       * @param key Unique key of component in container
+       * @param component The component actor to assign
+       */
+      assign<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>): Theater.OneWay
+      /**
+       * Mount a container in this container.
+       *
+       * @param key Unique key of container to mount
+       * @param context Context of container to mount
+       */
+      mount<Home extends Container>(key: string, context: ContainerContext<Home>): Theater.OneWay
+    }
+    /**
+     * A context offers synchronous, readonly access to the component actors of a container subject.
+     */
+    interface ContainerContext<Subject extends Container = Container> {
+      /**
+       * The container subject whose component actors are exposed by this context.
+       */
+      readonly subject: Theater.ActorRef<Subject>
+      /**
+       * Obtains keys of contained components.
+       */
+      readonly listing: string[]
+      /**
+       * Find a component actor in this context.
+       *
+       * @param key Key of component to find
+       * @returns A component
+       */
+      lookup<A extends Theater.Actor>(key: string): Theater.ActorRef<A> | undefined
+      /**
+       * Find a context in this context.
+       *
+       * @param key Key of context to find
+       * @returns A context
+       */
+      lookupContext<Home extends Container>(key: string): ContainerContext<Home> | undefined
+      /**
+       * Resolve path to component actor, relative from this context.
+       *
+       * @param path Path to component
+       * @returns The resolved component actor or undefined
+       */
+      resolve<A extends Theater.Actor>(path: string): Theater.ActorRef<A> | undefined
+      /**
+       * Resolve path to context, relative from this context.
+       *
+       * @param path Path to context
+       * @returns The resolved context or undefined
+       */
+      resolveContext<Home extends Container>(path: string): ContainerContext<Home> | undefined
+    }
+    /**
+     * A container role encapsulates the transient state of a container actor.
+     */
+    abstract class ContainerRole<Home extends Container>
+      extends Theater.Role<Container>
+      implements Theater.Script<Container>
+    {
+      /**
+       * Obtain the readonly context of the container.
+       */
+      protected readonly containerContext: ContainerContext<Home>
+      /**
+       * Synchronous assignment.
+       *
+       * @param key Unique key of component
+       * @param component Component actor
+       */
+      protected assignComponent<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>): void
+      /**
+       * Synchronous mount.
+       *
+       * @param key Unique key of container
+       * @param context Context of container
+       */
+      protected mountContext<Sub extends Container>(key: string, context: ContainerContext<Sub>): void
+      // play scenes of container actor
+      view(): Theater.Scene
+      assign<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>): Theater.Scene
+      mount<Home extends Container>(key: string, context: System.ContainerContext<Home>): Theater.Scene
+    }
+    /**
+     * A subsidiary actor represents a subsystem.
+     */
+    interface Subsidiary extends Theater.Actor {
       /**
        * Unique id of subsidiary system.
        *
+       * The id (number) is returned to the sender.
+       *
        * @return System identifier
        */
-      id(): Promise<number>
-      /**
-       * Terminate subsystem.
-       */
-      shutdown(): Promise<void>
+      id(): Theater.OneWay
     }
   }
 }

@@ -5,11 +5,11 @@ declare module "std.kernel" {
    */
   interface Kernel {
     /**
-     * Is the running JavaScript worker not supervised by a parent worker?
+     * Is the running JavaScript worker supervised by a parent worker?
      *
-     * @returns True for an unsupervised JavaScript worker, otherwise false
+     * @returns True for an supervised JavaScript worker, otherwise false
      */
-    isUnsupervised(): boolean
+    isSupervised(): boolean
     /**
      * Schedule a macrotask in a future cycle of the event loop.
      *

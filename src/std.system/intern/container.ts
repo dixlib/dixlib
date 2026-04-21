@@ -1,8 +1,7 @@
 import type Fx from "std.fx"
 import type System from "std.system"
 import type Theater from "std.theater"
-import type Agency from "std.theater.agency"
-import { agency, fn, future, fx, theater } from "../extern.js"
+import { fx, theater } from "../extern.js"
 
 export function ContainerRole<Home extends System.Container, S extends {} = object>(): Fx.Mixin<
   System.ContainerRole<Home>,
@@ -12,20 +11,20 @@ export function ContainerRole<Home extends System.Container, S extends {} = obje
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-type Components = { [key: string]: System.Component }
-type Containers = { [key: string]: System.Container }
-type Contexts = { [key: string]: System.Context<System.Container> }
+type Components = { [key: string]: Theater.ActorRef }
+type Containers = { [key: string]: Theater.ActorRef<System.Container> }
+type Contexts = { [key: string]: System.ContainerContext<System.Container> }
 type AnyContainerRole = System.ContainerRole<System.Container>
-class Context<Home extends System.Container> implements System.Context<Home> {
+class ContainerContext<Home extends System.Container> implements System.ContainerContext<Home> {
   // the exposed subject of this context
-  readonly #subject: Home
+  readonly #subject: Theater.ActorRef<Home>
   // all components, including containers
   readonly #components: Readonly<Components>
   // all subcontexts
   readonly #contexts: Readonly<Contexts>
   // find context from a list of keys
-  #findContext<Sub extends System.Container>(keys: string[]): Context<Sub> | undefined {
-    let context: System.Context<System.Container> = this
+  #findContext<Sub extends System.Container>(keys: string[]): ContainerContext<Sub> | undefined {
+    let context: System.ContainerContext<System.Container> = this
     for (const key of keys) {
       const descendant = context.lookupContext(key)
       if (!descendant) {
@@ -33,9 +32,9 @@ class Context<Home extends System.Container> implements System.Context<Home> {
       }
       context = descendant
     }
-    return context as Context<Sub>
+    return context as ContainerContext<Sub>
   }
-  constructor(container: Home, components: Readonly<Components>, contexts: Readonly<Contexts>) {
+  constructor(container: Theater.ActorRef<Home>, components: Readonly<Components>, contexts: Readonly<Contexts>) {
     this.#subject = container
     this.#components = components
     this.#contexts = contexts
@@ -44,27 +43,30 @@ class Context<Home extends System.Container> implements System.Context<Home> {
     return this.#subject
   }
   get listing() {
-    return fn.iterateKeys(this.#components) as IteratorObject<string>
+    return Object.keys(this.#components)
   }
-  lookup<Item extends System.Component>(key: string): Item | undefined {
-    return (key === "" ? this.#subject : this.#components[key]) as Item
+  containsKey(key: string): boolean {
+    return key in this.#components
   }
-  lookupContext<Sub extends System.Container>(key: string): System.Context<Sub> | undefined {
-    return (key === "" ? this : this.#contexts[key]) as System.Context<Sub> | undefined
+  lookup<A extends Theater.Actor>(key: string): Theater.ActorRef<A> {
+    return (key === "" ? this.#subject : this.#components[key]) as Theater.ActorRef<A>
   }
-  resolve<Item extends System.Component>(path: string): Item | undefined {
+  lookupContext<Sub extends System.Container>(key: string): System.ContainerContext<Sub> {
+    return (key === "" ? this : this.#contexts[key]) as System.ContainerContext<Sub>
+  }
+  resolve<A extends Theater.Actor>(path: string): Theater.ActorRef<A> | undefined {
     const keys = path.split("/")
     const lastKey = keys.pop() as string
     return this.#findContext(keys)?.lookup(lastKey)
   }
-  resolveContext<Sub extends System.Container>(path: string): System.Context<Sub> | undefined {
+  resolveContext<Sub extends System.Container>(path: string): System.ContainerContext<Sub> | undefined {
     return this.#findContext<Sub>(path.split("/"))
   }
 }
 const AnyContainerRoleMixin = fx.mixin<AnyContainerRole>(Super => {
   class ContainerRole<Home extends System.Container>
-    extends agency.ServerRole<System.Container>()(Super)
-    implements Agency.Servant<System.Container>
+    extends theater.Role<System.Container>()(Super)
+    implements Theater.Script<System.Container>
   {
     // all components
     readonly #components: Components
@@ -72,10 +74,14 @@ const AnyContainerRoleMixin = fx.mixin<AnyContainerRole>(Super => {
     readonly #containers: Containers
     // contexts of containers
     readonly #contexts: Contexts
-    // agent subject
-    #subject?: Home
     // readonly view
-    #view?: Context<Home>
+    #view?: ContainerContext<Home>
+    #observing?: Map<Theater.ActorRef, string>
+    #monitorNewComponent(key: string, actorRef: Theater.ActorRef) {
+      this.#observing ??= new Map()
+      this.#observing.set(actorRef, key)
+      this.monitorHealth(actorRef)
+    }
     #validateNewKey(key: string, description: string) {
       if (key === "") {
         throw new Error(`cannot ${description} under empty key`)
@@ -87,39 +93,53 @@ const AnyContainerRoleMixin = fx.mixin<AnyContainerRole>(Super => {
         throw new Error(`cannot ${description} under duplicate key "${key}"`)
       }
     }
-    protected *initializeRole() {
-      this.#subject = agency.createAgent(theater.startActor(agency.Client(), this.self))
+    protected *observeTermination(actorRef: Theater.ActorRef): Theater.Scene {
+      if (this.#observing?.has(actorRef)) {
+        const key = this.#observing.get(actorRef) as string
+        if (this.#components[key] === actorRef) {
+          if (key in this.#containers) {
+            delete this.#containers[key]
+            delete this.#contexts[key]
+          } else {
+            delete this.#components[key]
+          }
+          this.#observing.delete(actorRef)
+        }
+      }
     }
-    protected assignComponent<A extends System.Component>(key: string, component: A) {
+    protected *initializeRole(): Theater.Scene {
+      yield* super.initializeRole()
+      this.#view = new ContainerContext<Home>(this.self as Theater.ActorRef<Home>, this.#components, this.#contexts)
+    }
+    protected get containerContext() {
+      return this.#view as System.ContainerContext<Home>
+    }
+    protected assignComponent<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>) {
       this.#validateNewKey(key, "assign component")
       this.#components[key] = component
+      this.#monitorNewComponent(key, component)
     }
-    protected mountContext<C extends System.Container>(key: string, context: System.Context<C>) {
+    protected mountContext<C extends System.Container>(key: string, context: System.ContainerContext<C>) {
       this.#validateNewKey(key, "mount container")
       this.#containers[key] = context.subject
       this.#contexts[key] = context
+      this.#monitorNewComponent(key, context.subject)
     }
     constructor() {
       super()
       this.#containers = Object.create(null)
       this.#components = Object.create(this.#containers)
       this.#contexts = Object.create(null)
-      this.#subject = this.#view = void 0
+      this.#view = void 0
     }
-    @agency.Serve *view(): Theater.Scene<System.Context<Home>> {
-      this.#view ??= new Context<Home>(this.#subject as Home, this.#components, this.#contexts)
-      return this.#view
+    @theater.Play *view(): Theater.Scene {
+      this.return<System.ContainerContext<Home>>(this.containerContext)
     }
-    @agency.Serve *assign<Item extends System.Component>(key: string, component: Item): Theater.Scene<void> {
+    @theater.Play *assign<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>): Theater.Scene {
       this.assignComponent(key, component)
     }
-    @agency.Serve *mount<Home extends System.Container>(
-      key: string,
-      container: Home
-    ): Theater.Scene<System.Context<System.Container>> {
-      const context = future.when<System.Context>(yield future.pledge(container.view()))
+    @theater.Play *mount<A extends System.Container>(key: string, context: System.ContainerContext<A>): Theater.Scene {
       this.mountContext(key, context)
-      return context
     }
   }
   return ContainerRole as unknown as typeof Super & Fx.Constructor<AnyContainerRole, []>

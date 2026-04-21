@@ -164,12 +164,6 @@ A theater cue reveals an asynchronous signal that an actor can await.
 
 The standard theater concurrency service provides support for common concurrency scenarios e.g., producer/consumer synchronisation.
 
-### `std.theater.agency`
-
-The standard theater agency supports agents i.e., active objects ([Wikipedia](https://en.wikipedia.org/wiki/Active_object)).
-Every interaction with an agent result in a JavaScript promise.
-Under the hood, agents use a client/server actor pair to perform the agent actions.
-
 ### `std.system`
 
 The standard system is the component manager.

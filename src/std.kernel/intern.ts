@@ -6,10 +6,10 @@ export interface Startup<Init> {
   readonly parentPort: MessagePort
 }
 
-export function isUnsupervised() {
+export function isSupervised() {
   // an unsupervised web worker is any worker that is not a dedicated worker
   // it is either a shared worker or a browser window in dixlib
-  return typeof DedicatedWorkerGlobalScope !== "function"
+  return typeof DedicatedWorkerGlobalScope === "function"
 }
 
 export function queueMacrotask(macrotask: () => void): void {

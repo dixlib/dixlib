@@ -327,7 +327,7 @@ abstract class FamilyCue extends ParentCue {
     this.#children = new Set(cues.map(facade.expose))
   }
   propagate(child: CueObj, signal: Future.Signal<unknown>) {
-    if (!child || !this.#children || !this.#children.has(child)) {
+    if (!child || !this.#children?.has(child)) {
       throw new Error("cannot propagate signal from an invalid family member")
     }
     this.propagateFrom(child, signal)

@@ -8,8 +8,8 @@ export interface Startup<Init> {
   readonly parentPort: MessagePort
 }
 
-export function isUnsupervised() {
-  return isMainThread
+export function isSupervised() {
+  return !isMainThread
 }
 
 // use setImmediate for macrotasks

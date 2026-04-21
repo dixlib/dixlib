@@ -1,6 +1,6 @@
 import type Data from "std.data"
 import type Meta from "std.data.meta"
-import { data, fx } from "../extern.js"
+import { data, fn, fx } from "../extern.js"
 
 export function isType<T extends Data.Value = Data.Value>(it: unknown): it is Meta.Type<T> {
   return facade.isHandling(it)
@@ -245,7 +245,7 @@ const int32Type = facade.handle<Meta.Type<number>>(
       return 20
     }
     test(v: Data.Value): v is number {
-      return typeof v === "number" && ~~v === v
+      return fn.isInt32(v)
     }
     accept<T, P extends unknown[]>(type: Meta.Type<number>, pattern: Meta.TypePattern<T, P>, parameters: P): T {
       return pattern.int32 ? pattern.int32(type, parameters) : pattern.orelse(type, parameters)
