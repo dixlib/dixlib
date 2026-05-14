@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.3",
+  "version": "0.3.6",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
@@ -23,8 +23,7 @@
   "scripts": {
     "compile": "tsc --build --verbose && rolldown --config && npm run compile --workspaces",
     "format": "npx @biomejs/biome format --write --verbose",
-    "lint": "npx @biomejs/biome check --verbose",
-    "publish": "npm run format && npm run lint && npm run compile && npm publish"
+    "lint": "npx @biomejs/biome check --verbose"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
