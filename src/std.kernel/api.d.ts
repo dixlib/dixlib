@@ -7,7 +7,7 @@ declare module "std.kernel" {
     /**
      * Is the running JavaScript worker supervised by a parent worker?
      *
-     * @returns True for an supervised JavaScript worker, otherwise false
+     * @returns True for a supervised JavaScript worker, otherwise false
      */
     isSupervised(): boolean
     /**

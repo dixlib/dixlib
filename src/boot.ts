@@ -41,7 +41,7 @@ async function provideSystem() {
   return provide("std.system")
 }
 function createBootLoader(bundles: Loader.Bindings[]) {
-  const loader: Loader = { provide, query }
+  const loader: Loader = { provide, use, query }
   // service loader stacks multiple layers on top of each other
   const stack = new Map<string, Layer>()
   // all service aspects that are bound in at least one layer
@@ -72,37 +72,40 @@ function createBootLoader(bundles: Loader.Bindings[]) {
       return Promise.reject(new Error(`cannot provide unknown service '${name}'`))
     }
   }
+  function use<Names extends ServiceName[]>(...names: Names) {
+    return Promise.all(names.map(name => provide(name))) as Promise<{ [Ix in keyof Names]: Service[Names[Ix]] }>
+  }
   // query bound services of this loader
   function* query(options?: Loader.QueryOptions): Generator<Loader.QueryResult> {
     const aspectFilter = options?.aspects
     const bundleFilter = options?.bundles
-    const aspects = Array.isArray(aspectFilter) ? new Set(aspectFilter) : boundAspects
-    const bundles = Array.isArray(bundleFilter) ? new Set(bundleFilter) : stack.keys()
+    // set with covered aspects of this query
+    const covAspects = Array.isArray(aspectFilter) ? new Set(aspectFilter) : boundAspects
+    // iterator over covered bundles of this query
+    const covBundles = Array.isArray(bundleFilter) ? new Set(bundleFilter).values() : stack.keys()
+    // apply filter functions when appropriate
+    const aspectIterable = typeof aspectFilter !== "function" ? covAspects : covAspects.values().filter(aspectFilter)
+    const bundleIterable = typeof bundleFilter !== "function" ? covBundles : covBundles.filter(bundleFilter)
+    // collect (potential) iterators, because they might be iterated multiple times
+    const aspects = [...aspectIterable]
+    const bundles = [...bundleIterable]
     if (options?.orientation === "vertical") {
       // vertical query orders results by service aspect and bindings id
       for (const aspect of aspects) {
-        if (typeof aspectFilter !== "function" || aspectFilter(aspect)) {
-          for (const id of bundles) {
-            if (typeof bundleFilter !== "function" || bundleFilter(id)) {
-              const serviceNames = stack.get(id)?.aspects[aspect]
-              if (serviceNames) {
-                yield new QueryResult(aspect, id, serviceNames)
-              }
-            }
+        for (const id of bundles) {
+          const serviceNames = stack.get(id)?.aspects[aspect]
+          if (serviceNames) {
+            yield new QueryResult(aspect, id, serviceNames)
           }
         }
       }
     } else {
       // horizontal query orders results by bindings id and service aspect
       for (const id of bundles) {
-        if (typeof bundleFilter !== "function" || bundleFilter(id)) {
-          for (const aspect of aspects) {
-            if (typeof aspectFilter !== "function" || aspectFilter(aspect)) {
-              const serviceNames = stack.get(id)?.aspects[aspect]
-              if (serviceNames) {
-                yield new QueryResult(aspect, id, serviceNames)
-              }
-            }
+        for (const aspect of aspects) {
+          const serviceNames = stack.get(id)?.aspects[aspect]
+          if (serviceNames) {
+            yield new QueryResult(aspect, id, serviceNames)
           }
         }
       }
@@ -125,14 +128,14 @@ function createBootLoader(bundles: Loader.Bindings[]) {
             return providingFormer
           }
         : void 0,
-      use<P extends unknown[]>(...names: ServiceName[]): Promise<P> {
+      use<Names extends ServiceName[]>(...names: Names): Promise<{ [Ix in keyof Names]: Service[Names[Ix]] }> {
         // register direct dependencies on other services
         const { direct } = dependencyGraph[name]
         for (const dependency of names) {
           // fail if a dependency cycle is detected
           addDependency(direct, name, dependency)
         }
-        return Promise.all(names.map(provide)) as Promise<P>
+        return Promise.all(names.map(provide)) as Promise<{ readonly [Ix in keyof Names]: Service[Names[Ix]] }>
       },
     })
     // determine service operations
@@ -207,7 +210,7 @@ function createBootLoader(bundles: Loader.Bindings[]) {
     if (specification) {
       const intersection = specifications.intersection(specification)
       if (intersection.size > 0) {
-        throw new Error(`duplicate service speficiations for '${[...intersection].join("','")}' in bundle ${id}`)
+        throw new Error(`duplicate service spefication for '${[...intersection].join("','")}' in bundle ${id}`)
       }
       specification.forEach(name => {
         specifications.add(name)

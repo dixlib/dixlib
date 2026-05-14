@@ -7,4 +7,11 @@ export const definitions = {
   "Data.Dictionary": "a=*? <a>",
   "Data.Pair": "a=*? b=*? (a,b)",
   "Data.Triple": "a=*? b=*? c=*? (a,b,c)",
+  "Data.Quadruple": "a=*? b=*? c=*? d=*? (a,b,c,d)",
+  "Data.Quintuple": "a=*? b=*? c=*? d=*? e=*? (a,b,c,d,e)",
+  "Data.Sextuple": "a=*? b=*? c=*? d=*? e=*? f=*? (a,b,c,d,e,f)",
+  "Data.Septuple": "a=*? b=*? c=*? d=*? e=*? f=*? g=*? (a,b,c,d,e,f,g)",
+  "Data.Octuple": "a=*? b=*? c=*? d=*? e=*? f=*? g=*? h=*? (a,b,c,d,e,f,g,h)",
+  "Data.Nonuple": "a=*? b=*? c=*? d=*? e=*? f=*? g=*? h=*? i=*? (a,b,c,d,e,f,g,h,i)",
+  "Data.Decuple": "a=*? b=*? c=*? d=*? e=*? f=*? g=*? h=*? i=*? j=*? (a,b,c,d,e,f,g,h,i,j)",
 }

@@ -1,5 +1,3 @@
-# rollup cache with intermediate assets
-.rollup.cache
 # generated assets
 build
 # JavaScript packages (development dependencies)

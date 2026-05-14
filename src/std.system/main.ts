@@ -16,7 +16,7 @@ export interface Initial {
 export default function main({ initial, parentPort, exit }: Kernel.Main<Initial>) {
   const { ancestry } = initial
   inherited = { parentPort, ancestry, exit }
-  startSubsystem(initial.dixlib, initial.bundleStack)
+  startSubsystem(initial).catch(reason => console.error("Subsystem failure: %O", reason))
 }
 
 // export info that was inherited from parent system
@@ -27,9 +27,11 @@ export let inherited: {
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-async function startSubsystem(dixlib: string, bundleStack: Loader.Bindings[]) {
+async function startSubsystem({ dixlib, bundleStack }: Initial) {
   // import "dixlib" with specifier from parent system
   const { default: startSystem }: Default = await import(dixlib)
   // start child system with given bundle stack
-  await startSystem(bundleStack)
+  const subsystem = await startSystem(bundleStack)
+  //TODO: Startup service
+  subsystem.loader().provide
 }

@@ -1,6 +1,7 @@
+import type Quality from "std.quality"
 import type System from "std.system"
 import type Theater from "std.theater"
-import { fn, future, kernel, news, loader as systemLoader, theater } from "../extern.js"
+import { fn, future, kernel, news, quality, loader as systemLoader, theater } from "../extern.js"
 import { ContainerRole } from "./container.js"
 import { version } from "./info.js"
 import { ConsoleLoggerRole, NewsReaderRole } from "./logger.js"
@@ -19,27 +20,32 @@ interface Support extends Theater.Actor {
 }
 function* guardLogger(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
   // use the JavaScript console to avoid infinite loops with news service
-  console.debug("unexpected incident with logger: %o", incident)
+  console.debug("unexpected incident with logger: %O", incident)
   // ignore logger related errors
   return "forgive"
 }
 function* guardQuestioner(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with questioner: %o", incident)
+  news.debug("unexpected incident with questioner: %O", incident)
   // ignore questioner related errors
   return "forgive"
 }
 function* guardSenders(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with sender container: %o", incident)
+  news.debug("unexpected incident with sender container: %O", incident)
   return "forgive"
 }
 function* guardSubsidiaries(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with subsidiary container: %o", incident)
+  news.debug("unexpected incident with subsidiary container: %O", incident)
+  return "forgive"
+}
+function* guardTestRunners(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
+  news.error("unexpected incident with test runner: %O", incident)
   return "forgive"
 }
 class SupportRole extends theater.Role<Support>()(Object) implements Theater.Script<Support> {
   #createComponents() {
     return {
       logger: this.#createLogger(),
+      quality: this.#createTestRunner(),
       questioner: this.#createQuestioner(),
     }
   }
@@ -74,6 +80,13 @@ class SupportRole extends theater.Role<Support>()(Object) implements Theater.Scr
       Role: ContainerRole()(Object),
       parameters: [],
       guard: guardSubsidiaries,
+    })
+  }
+  #createTestRunner(): Theater.ActorRef<Quality.TestRunner> {
+    return this.castChild<Quality.TestRunner, []>({
+      Role: quality.TestRunner(),
+      parameters: [],
+      guard: guardTestRunners,
     })
   }
   protected *initializeRole(confirm: () => void) {

@@ -1,7 +1,7 @@
 declare module "std.theater" {
-  import type Future from "std.theater.future"
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
+  import type Future from "std.theater.future"
   export default Theater
   /**
    * The theater service provides a JavaScript actor system.

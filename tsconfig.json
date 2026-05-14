@@ -1,10 +1,9 @@
 {
   "extends": "./tsconfig-base.json",
-  "exclude": ["./nodejs-kernel"],
+  "exclude": ["./server"],
   "compilerOptions": {
     "target": "esnext",
     "rootDir": "./src",
-    "outDir": "./build",
     "lib": ["ESNext", "WebWorker"],
     "typeRoots": ["./src"],
     "types": ["api"],

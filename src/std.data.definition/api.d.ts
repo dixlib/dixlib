@@ -1,11 +1,3 @@
-declare module "dixlib" {
-  interface ServiceAspects {
-    /**
-     * If true, a datatype module specifies the type definitions of a service.
-     */
-    readonly typedefs?: boolean
-  }
-}
 declare module "std.data.definition" {
   import type Data from "std.data"
   export default Definition

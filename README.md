@@ -173,3 +173,14 @@ It deploys components and subsystems.
 
 The standard news service is a logging solution.
 Subsystems forward their log messages to the top system.
+
+### `std.assert`
+
+The standard assert service provides operations to test assumptions about your code.
+If the assumption is wrong, a runtime assertion error is thrown.
+The assert service is used in service tests, but it is not restricted to tests.
+
+### `std.quality`
+
+The standard quality service is a testing framework.
+It uses actors to concurrently test service providers.

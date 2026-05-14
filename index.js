@@ -1,7 +1,7 @@
 /// <reference path="src/api.d.ts"/>
 import * as standardBindings from "./build/bindings.js"
 import bootSystem from "./build/boot.js"
-import * as nodejsBindings from "./nodejs-kernel/build/bindings.js"
+import * as serverBindings from "./server/build/bindings.js"
 
 /**
  * Start a new system in this JavaScript runtime environment.
@@ -10,8 +10,8 @@ import * as nodejsBindings from "./nodejs-kernel/build/bindings.js"
  * @returns {Promise<import("std.system").default>} A promise to provide the `std.system` service
  */
 export default function startSystem(bundleStack) {
-  // start with standard bindings
-  const bundles = typeof process === "undefined" ? [standardBindings] : [standardBindings, nodejsBindings]
+  // start with standard bindings (include server bindings if running under nodejs, bun or deno)
+  const bundles = typeof process === "undefined" ? [standardBindings] : [standardBindings, serverBindings]
   // add non-standard bindings
   bundles.push(...bundleStack)
   return bootSystem(bundles)

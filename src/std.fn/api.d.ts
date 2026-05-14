@@ -12,6 +12,13 @@ declare module "std.fn" {
      */
     isGeneratorFunction(it: unknown): it is GeneratorFunction
     /**
+     * Test whether it is a signed 32-bit number.
+     *
+     * @param it Thing to test
+     * @returns True if it is an integer between -2^31 and 2^31-1, otherwise false
+     */
+    isInt32(it: unknown): it is number
+    /**
      * Iterate over keys of enumerable properties.
      *
      * @param it Object with enumerable properties
@@ -70,12 +77,5 @@ declare module "std.fn" {
      * @returns True
      */
     returnTrue(): true
-    /**
-     * Test whether it is a signed 32-bit number.
-     *
-     * @param it Thing to test
-     * @returns True if it is an integer between -(2**31) and 2**31-1, otherwise false
-     */
-    isInt32(it: unknown): it is number
   }
 }

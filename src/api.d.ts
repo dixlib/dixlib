@@ -1,3 +1,4 @@
+/// <reference path="./std.assert/api.d.ts" />
 /// <reference path="./std.data/api.d.ts" />
 /// <reference path="./std.data.definition/api.d.ts" />
 /// <reference path="./std.data.meta/api.d.ts" />
@@ -7,32 +8,36 @@
 /// <reference path="./std.kernel/api.d.ts" />
 /// <reference path="./std.loader/api.d.ts" />
 /// <reference path="./std.news/api.d.ts" />
+/// <reference path="./std.quality/api.d.ts" />
 /// <reference path="./std.syntax/api.d.ts" />
 /// <reference path="./std.system/api.d.ts" />
 /// <reference path="./std.theater/api.d.ts" />
 /// <reference path="./std.theater.concurrency/api.d.ts" />
 /// <reference path="./std.theater.future/api.d.ts" />
 declare module "dixlib" {
-  import type Concurrency from "std.theater.concurrency"
+  import type Assert from "std.assert"
   import type Data from "std.data"
   import type Definition from "std.data.definition"
+  import type Meta from "std.data.meta"
+  import type Portability from "std.data.portability"
   import type Fn from "std.fn"
-  import type Future from "std.theater.future"
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
   import type Loader from "std.loader"
-  import type Meta from "std.data.meta"
   import type News from "std.news"
-  import type Portability from "std.data.portability"
+  import type Quality from "std.quality"
   import type Syntax from "std.syntax"
   import type System from "std.system"
   import type Theater from "std.theater"
+  import type Concurrency from "std.theater.concurrency"
+  import type Future from "std.theater.future"
   /**
    * Map service name to service interface at compile time.
    *
    * This interface is intended to be augmented in bundles that define services.
    */
   export interface Service {
+    readonly "std.assert": Assert
     readonly "std.data": Data
     readonly "std.data.definition": Definition
     readonly "std.data.meta": Meta
@@ -42,6 +47,7 @@ declare module "dixlib" {
     readonly "std.kernel": Kernel
     readonly "std.loader": Loader
     readonly "std.news": News
+    readonly "std.quality": Quality
     readonly "std.syntax": Syntax
     readonly "std.system": System
     readonly "std.theater": Theater
@@ -65,7 +71,7 @@ declare module "dixlib" {
      * @param names Service names
      * @returns A promise of an array with the requested providers
      */
-    use<P extends Service[ServiceName][]>(...names: ServiceName[]): Promise<P>
+    use<Names extends ServiceName[]>(...names: Names): Promise<{ [Ix in keyof Names]: Service[Names[Ix]] }>
     /**
      * If the contract is a refinement, wait for former contractor to create a provider.
      * A bundle can refine (or redefine) a service provider from another bundle, lower in the bundle stack.

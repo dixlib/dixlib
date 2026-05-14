@@ -3,6 +3,10 @@ export function isGeneratorFunction(it: unknown): it is GeneratorFunction {
   return generatorFunctionPrototype.isPrototypeOf(it as object)
 }
 
+export function isInt32(it: unknown): it is number {
+  return ~~(it as number) === it
+}
+
 export function* iterateKeys<T>(it: T): Generator<keyof T> {
   for (const key in it) {
     yield key
@@ -43,10 +47,6 @@ export function returnFalse(): false {
 
 export function returnTrue(): true {
   return true
-}
-
-export function isInt32(it: unknown): it is number {
-  return ~~(it as number) === it
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //

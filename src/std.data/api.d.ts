@@ -1,3 +1,11 @@
+declare module "dixlib" {
+  interface ServiceAspects {
+    /**
+     * If true, a datatype module specifies the type definitions of a service.
+     */
+    readonly typedefs?: boolean
+  }
+}
 declare module "std.data" {
   import type Meta from "std.data.meta"
   export default Data

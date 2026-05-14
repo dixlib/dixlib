@@ -7,7 +7,7 @@ declare module "dixlib" {
   }
 }
 declare module "std.loader" {
-  import type { Contract, Service, ServiceAspect, ServiceBindings, ServiceName } from "dixlib"
+  import type Dixlib from "dixlib"
   export default Loader
   /**
    * The loader implements a promise-based API to manage services.
@@ -19,7 +19,16 @@ declare module "std.loader" {
      * @param name Service name
      * @returns A promise that resolves with the service provider
      */
-    provide<Name extends ServiceName>(name: Name): Promise<Service[Name]>
+    provide<Name extends Dixlib.ServiceName>(name: Name): Promise<Dixlib.Service[Name]>
+    /**
+     * Convenience operation to provide multiple services.
+     *
+     * @param names Names of services to provide
+     * @returns A promise of an array with corresponding service providers
+     */
+    use<Names extends Dixlib.ServiceName[]>(
+      ...names: Names
+    ): Promise<{ [Ix in keyof Names]: Dixlib.Service[Names[Ix]] }>
     /**
      * Query bound services.
      *
@@ -40,12 +49,14 @@ declare module "std.loader" {
       /**
        * Bound service aspects.
        */
-      readonly service: ServiceBindings
+      readonly service: Dixlib.ServiceBindings
     }
     /**
      * An extern module exports a default function, the contractor, which promises to fulfill the given contract.
      */
-    type Contractor<Name extends ServiceName> = (contract: Contract<Name>) => Promise<Service[Name]>
+    type Contractor<Name extends Dixlib.ServiceName> = (
+      contract: Dixlib.Contract<Name>
+    ) => Promise<Dixlib.Service[Name]>
     /**
      * A query result specifies all services which are bound at some service aspect and bundle id.
      */
@@ -53,7 +64,7 @@ declare module "std.loader" {
       /**
        * Bound service aspect.
        */
-      readonly aspect: ServiceAspect
+      readonly aspect: Dixlib.ServiceAspect
       /**
        * Id of bundle bindings.
        */
@@ -65,14 +76,14 @@ declare module "std.loader" {
       /**
        * Iterable iterator over names of bound services.
        */
-      readonly serviceNames: IteratorObject<ServiceName>
+      readonly serviceNames: IteratorObject<Dixlib.ServiceName>
       /**
        * Test whether some service is bound.
        *
        * @param serviceName Name of service to test
        * @returns True if service is bound, otherwise false
        */
-      hasBindingFor(serviceName: ServiceName): boolean
+      hasBindingFor(serviceName: Dixlib.ServiceName): boolean
     }
     /**
      * Options to filter and order qeury results.
@@ -85,7 +96,7 @@ declare module "std.loader" {
       /**
        * Optionally filter by bound aspect.
        */
-      aspects?: QueryFilter<ServiceAspect>
+      aspects?: QueryFilter<Dixlib.ServiceAspect>
       /**
        * Optionally filter by id of bundle bindings.
        */

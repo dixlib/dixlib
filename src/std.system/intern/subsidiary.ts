@@ -13,7 +13,7 @@ export function Subsidiary(): Theater.RoleClass<System.Subsidiary, [Loader.Bindi
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
-// import.meta.url is where extern.js/intern.js of service provider is located! (this file is merged with rollup)
+// import.meta.url is where extern.js/intern.js of service provider is located! (this file is merged with rolldown)
 const mainURL = new URL("./main.js", import.meta.url)
 const dixlib = new URL("../../index.js", import.meta.url).href
 class SubsidiaryRole extends theater.Role<System.Subsidiary>()(Object) implements Theater.Script<System.Subsidiary> {

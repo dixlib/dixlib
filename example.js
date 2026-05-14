@@ -5,7 +5,8 @@ try {
   const system = await startSystem([])
   const stop = performance.now()
   const loader = system.loader()
-  const [data, definition, future, kernel, meta, news, portability, syntax, theater] = await Promise.all([
+  const [assert, data, definition, future, kernel, meta, news, portability, syntax, theater] = await Promise.all([
+    loader.provide("std.assert"),
     loader.provide("std.data"),
     loader.provide("std.data.definition"),
     loader.provide("std.theater.future"),
@@ -18,7 +19,8 @@ try {
   ])
   news.info("started at %d ms in %d ms", start, stop - start)
   news.info(
-    "services: %o %o %o %o %o %o %o %o %o %o %o",
+    "services: %O %O %O %O %O %O %O %O %O %O %O %O",
+    assert,
     data,
     definition,
     future,
@@ -34,7 +36,7 @@ try {
   const subsystemRef = theater.startActor(system.Subsidiary(), [])
   const id = await system.ask(subsystemRef, subsystem => subsystem.id())
   news.info("subsystem %d started?", id)
-  news.info("%o", system.root().resolve(`subsidiary/${id}`))
+  news.info("%O", system.root().resolve(`subsidiary/${id}`))
   subsystemRef().tada()
   const subloggerRef = theater.startActor(system.Nearby(), id, "logger")
   subloggerRef().report({
@@ -47,8 +49,9 @@ try {
   subloggerRef().bla()
   setTimeout(() => subsystemRef().terminate(), 2_000)
   const space = await meta.inflate("std.data")
-  news.info("binary hashcode %o", space.hashcode)
-  news.info("base64 hashcode %o", await kernel.encodeBase64URI(space.hashcode))
+  news.info("binary hashcode %O", space.hashcode)
+  news.info("base64 hashcode %O", await kernel.encodeBase64URI(space.hashcode))
+  console.log(await system.test())
   // space.evaluate("<[(Data.Bla(D.S, string), D.B)]>").match({
   //   string() {
   //     news.log("singular type!")

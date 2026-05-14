@@ -1,5 +1,6 @@
 export { ContainerRole } from "./intern/container.js"
 export { ancestry, id, version } from "./intern/info.js"
+export { test } from "./intern/quality.js"
 export { ask } from "./intern/questioner.js"
 export { root } from "./intern/root.js"
 export { Subsidiary } from "./intern/subsidiary.js"

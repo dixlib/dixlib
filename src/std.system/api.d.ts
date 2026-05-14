@@ -1,7 +1,9 @@
 declare module "std.system" {
+  import type Dixlib from "dixlib"
   import type Fx from "std.fx"
   import type Loader from "std.loader"
   import type News from "std.news"
+  import type Quality from "std.quality"
   import type Theater from "std.theater"
   export default System
   interface System {
@@ -81,6 +83,17 @@ declare module "std.system" {
       actorRef: Theater.ActorRef<A>,
       question: (actor: A) => Theater.OneWay
     ): Promise<Result>
+    /**
+     * Run a system test.
+     *
+     * If the service name is not given, all services are tested.
+     * If the bundle id is not given, all bundles with test modules are examined.
+     *
+     * @param name Optional name of service to test
+     * @param bundle Optional id of bundle that contains the test module(s) to use
+     * @returns A promise of a test report
+     */
+    test(name?: Dixlib.ServiceName, bundle?: string): Promise<Quality.TestReport>
   }
   namespace System {
     /**
@@ -114,7 +127,7 @@ declare module "std.system" {
      *
      * Every system has a questioner component at path "questioner".
      *
-     * The {@link System.ask} operation uses a questioner.
+     * The {@link System.ask} operation uses this questioner.
      */
     interface Questioner extends Theater.Sender {
       /**
@@ -129,6 +142,17 @@ declare module "std.system" {
         question: (actor: A) => Theater.OneWay,
         cb: (result: Result) => void
       ): Theater.OneWay
+    }
+    /**
+     * A subsidiary actor represents a subsystem.
+     */
+    interface Subsidiary extends Theater.Actor {
+      /**
+       * Unique id of subsidiary system.
+       *
+       * The id (number) is returned to the sender.
+       */
+      id(): Theater.OneWay
     }
     /**
      * A container is a component that holds zero or more component actors.
@@ -220,24 +244,11 @@ declare module "std.system" {
        * @param key Unique key of container
        * @param context Context of container
        */
-      protected mountContext<Sub extends Container>(key: string, context: ContainerContext<Sub>): void
+      protected mountContext<SubContainer extends Container>(key: string, context: ContainerContext<SubContainer>): void
       // play scenes of container actor
       view(): Theater.Scene
       assign<A extends Theater.Actor>(key: string, component: Theater.ActorRef<A>): Theater.Scene
-      mount<Home extends Container>(key: string, context: System.ContainerContext<Home>): Theater.Scene
-    }
-    /**
-     * A subsidiary actor represents a subsystem.
-     */
-    interface Subsidiary extends Theater.Actor {
-      /**
-       * Unique id of subsidiary system.
-       *
-       * The id (number) is returned to the sender.
-       *
-       * @return System identifier
-       */
-      id(): Theater.OneWay
+      mount<SubContainer extends Container>(key: string, context: System.ContainerContext<SubContainer>): Theater.Scene
     }
   }
 }

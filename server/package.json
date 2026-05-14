@@ -1,5 +1,5 @@
 {
-  "name": "@dixlib/nodejs",
+  "name": "@dixlib/server",
   "description": "NodeJS/Deno/Bun bindings for dixlib",
   "type": "module",
   "private": true,
@@ -7,9 +7,9 @@
     "./bindings.js": "./build/bindings.js"
   },
   "scripts": {
-    "compile": "tsc --build --verbose && rollup --config"
+    "compile": "tsc --build --verbose && rolldown --config"
   },
   "devDependencies": {
-    "@types/node": "^25.3.0"
+    "@types/node": "^25.7.0"
   }
 }

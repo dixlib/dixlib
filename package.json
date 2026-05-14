@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": "dixlib@gmail.com",
   "repository": {
     "type": "git",
@@ -15,25 +15,23 @@
   "module": "./index.js",
   "exports": {
     ".": "./index.js",
+    "./bindings.js": "./build/bindings.js",
     "./package.json": "./package.json",
-    "./rollup.config.js": "./rollup.config.js"
+    "./rolldown.config.js": "./rolldown.config.js"
   },
   "types": "./src/api",
   "scripts": {
-    "compile": "tsc --build --verbose && rollup --config && npm run compile --workspaces",
+    "compile": "tsc --build --verbose && rolldown --config && npm run compile --workspaces",
     "format": "npx @biomejs/biome format --write --verbose",
-    "lint": "npx @biomejs/biome check --verbose"
+    "lint": "npx @biomejs/biome check --verbose",
+    "publish": "npm run format && npm run lint && npm run compile && npm publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.12",
-    "@rollup/plugin-json": "^6.1.0",
-    "@rollup/plugin-terser": "^1.0.0",
-    "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.60.2",
-    "tslib": "^2.8.1",
+    "@biomejs/biome": "^2.4.15",
+    "rolldown": "^1.0.1",
     "typescript": "^6.0.3"
   },
   "workspaces": [
-    "nodejs-kernel"
+    "server"
   ]
 }
