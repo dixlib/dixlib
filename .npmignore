@@ -1,1 +1,4 @@
-# ignore .gitignore to publish build directories
+# node_modules is ignored by default
+# nothing else to ignore i.e., include build directories when publishing
+# this apparent 'useless' file is necessary because .gitignore is used if .npmignore is missing
+# and .gitignore ignores build directories

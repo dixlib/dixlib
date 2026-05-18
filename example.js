@@ -5,18 +5,18 @@ try {
   const system = await startSystem([])
   const stop = performance.now()
   const loader = system.loader()
-  const [assert, data, definition, future, kernel, meta, news, portability, syntax, theater] = await Promise.all([
-    loader.provide("std.assert"),
-    loader.provide("std.data"),
-    loader.provide("std.data.definition"),
-    loader.provide("std.theater.future"),
-    loader.provide("std.kernel"),
-    loader.provide("std.data.meta"),
-    loader.provide("std.news"),
-    loader.provide("std.data.portability"),
-    loader.provide("std.syntax"),
-    loader.provide("std.theater"),
-  ])
+  const [assert, data, definition, future, kernel, meta, news, portability, syntax, theater] = await loader.use(
+    "std.assert",
+    "std.data",
+    "std.data.definition",
+    "std.theater.future",
+    "std.kernel",
+    "std.data.meta",
+    "std.news",
+    "std.data.portability",
+    "std.syntax",
+    "std.theater"
+  )
   news.info("started at %d ms in %d ms", start, stop - start)
   news.info(
     "services: %O %O %O %O %O %O %O %O %O %O %O %O",
@@ -51,7 +51,7 @@ try {
   const space = await meta.inflate("std.data")
   news.info("binary hashcode %O", space.hashcode)
   news.info("base64 hashcode %O", await kernel.encodeBase64URI(space.hashcode))
-  console.log(await system.test())
+  news.info("test result %O", await system.test())
   // space.evaluate("<[(Data.Bla(D.S, string), D.B)]>").match({
   //   string() {
   //     news.log("singular type!")

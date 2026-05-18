@@ -97,13 +97,13 @@ declare module "std.quality" {
        */
       readonly bundle: string
       /**
-       * The moment when the service test started.
+       * The moment ({@link performance.now}) when the service test started.
        */
-      readonly start: Temporal.Instant
+      readonly start: number
       /**
-       * The moment when the service test stopped.
+       * The moment ({@link performance.now}) when the service test stopped.
        */
-      readonly stop: Temporal.Instant
+      readonly stop: number
       /**
        * Number of successfully completed service operation tests.
        */
@@ -122,13 +122,13 @@ declare module "std.quality" {
            */
           readonly failure?: Error
           /**
-           * The moment when the service operation test started.
+           * The moment ({@link performance.now}) when the service operation test started.
            */
-          readonly start: Temporal.Instant
+          readonly start: number
           /**
-           * The moment when the service operation test stopped.
+           * The moment ({@link performance.now}) when the service operation test stopped.
            */
-          readonly stop: Temporal.Instant
+          readonly stop: number
         }
       }
     }
@@ -189,9 +189,9 @@ declare module "std.quality" {
        *
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
-       * @param start The moment when preparation started
+       * @param start The moment ({@link performance.now}) when preparation started
        */
-      beginPreparation(name: Dixlib.ServiceName, bundle: string, start: Temporal.Instant): Theater.OneWay
+      beginPreparation(name: Dixlib.ServiceName, bundle: string, start: number): Theater.OneWay
       /**
        * Service test preparation was completed.
        *
@@ -199,15 +199,15 @@ declare module "std.quality" {
        *
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
-       * @param start The moment when preparation started
-       * @param stop The moment when preparation stopped
+       * @param start The moment ({@link performance.now}) when preparation started
+       * @param stop The moment ({@link performance.now}) when preparation stopped
        * @param failure If defined, the preparation failed with this error
        */
       endPreparation(
         name: Dixlib.ServiceName,
         bundle: string,
-        start: Temporal.Instant,
-        stop: Temporal.Instant,
+        start: number,
+        stop: number,
         failure?: Error
       ): Theater.OneWay
       /**
@@ -216,13 +216,13 @@ declare module "std.quality" {
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
        * @param operation Service operation name
-       * @param start The moment when the service operation test started
+       * @param start The moment ({@link performance.now}) when the service operation test started
        */
       beginOperationTest<Name extends Dixlib.ServiceName>(
         name: Name,
         bundle: string,
         operation: keyof Dixlib.Service[Name],
-        start: Temporal.Instant
+        start: number
       ): Theater.OneWay
       /**
        * A service operation test was completed.
@@ -230,16 +230,16 @@ declare module "std.quality" {
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
        * @param operation Service operation name
-       * @param start The moment when the service operation test started
-       * @param stop The moment when the service operation test stopped
+       * @param start The moment ({@link performance.now}) when the service operation test started
+       * @param stop The moment ({@link performance.now}) when the service operation test stopped
        * @param failure If defined, the service operation test failed with this error
        */
       endOperationTest<Name extends Dixlib.ServiceName>(
         name: Name,
         bundle: string,
         operation: keyof Dixlib.Service[Name],
-        start: Temporal.Instant,
-        stop: Temporal.Instant,
+        start: number,
+        stop: number,
         failure?: Error
       ): Theater.OneWay
       /**
@@ -247,23 +247,23 @@ declare module "std.quality" {
        *
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
-       * @param start The moment when destruction started
+       * @param start The moment ({@link performance.now}) when destruction started
        */
-      beginDestruction(name: Dixlib.ServiceName, bundle: string, start: Temporal.Instant): Theater.OneWay
+      beginDestruction(name: Dixlib.ServiceName, bundle: string, start: number): Theater.OneWay
       /**
        * Service test destruction was completed.
        *
        * @param name Name of tested service
        * @param bundle Id of bundle that implements the service test
-       * @param start The moment when destruction started
-       * @param stop The moment when destruction stopped
+       * @param start The moment ({@link performance.now}) when destruction started
+       * @param stop The moment ({@link performance.now}) when destruction stopped
        * @param failure If defined, the destruction failed with this error
        */
       endDestruction(
         name: Dixlib.ServiceName,
         bundle: string,
-        start: Temporal.Instant,
-        stop: Temporal.Instant,
+        start: number,
+        stop: number,
         failure?: Error
       ): Theater.OneWay
     }

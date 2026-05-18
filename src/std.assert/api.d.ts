@@ -42,7 +42,9 @@ declare module "std.assert" {
      */
     true(condition: boolean, message?: string): void
     /**
-     * Assert expected and actual result are strictly equal ({@link Object.is}).,
+     * Assert expected and actual result are strictly equal ({@link Object.is}).
+     *
+     * Be careful with negative zero, because ```Object.is(-0, 0)``` is false!
      *
      * @param expected Expected result
      * @param actual Actual result
@@ -51,14 +53,16 @@ declare module "std.assert" {
      */
     equal(expected: unknown, actual: unknown, message?: string): void
     /**
-     * Assert expected and actual array to have strictly equal ({@link Object.is}) content.
+     * Assert expected and actual result to have equal content.
      *
-     * @param expected Expected array
-     * @param actual Actual array
+     * This works recursively on arrays and objects.
+     *
+     * @param expected Expected content
+     * @param actual Actual content
      * @param message Optional error message
-     * @throws Assertion error if expected content in array is not the same as actual content
+     * @throws Assertion error if expected content is not the same as actual content
      */
-    equalArray(expected: unknown[], actual: unknown[], message?: string): void
+    deepEqual(expected: unknown, actual: unknown, message?: string): void
     /**
      * Assert expected and actual data value are equivalent.
      *

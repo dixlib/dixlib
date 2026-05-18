@@ -18,29 +18,15 @@ export function loader() {
 interface Support extends Theater.Actor {
   completeRole(confirm: () => void): Theater.OneWay
 }
-function* guardLogger(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  // use the JavaScript console to avoid infinite loops with news service
-  console.debug("unexpected incident with logger: %O", incident)
-  // ignore logger related errors
-  return "forgive"
-}
-function* guardQuestioner(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with questioner: %O", incident)
-  // ignore questioner related errors
-  return "forgive"
-}
-function* guardSenders(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with sender container: %O", incident)
-  return "forgive"
-}
-function* guardSubsidiaries(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.debug("unexpected incident with subsidiary container: %O", incident)
-  return "forgive"
-}
-function* guardTestRunners(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.error("unexpected incident with test runner: %O", incident)
-  return "forgive"
-}
+const guardLogger = theater.createDefaultGuard("forgive", "unexpected incident with logger: %O", "debug")
+const guardQuestioner = theater.createDefaultGuard("forgive", "unexpected incident with questioner: %O", "debug")
+const guardSenders = theater.createDefaultGuard("forgive", "unexpected incident with sender container: %O", "debug")
+const guardSubsidiaries = theater.createDefaultGuard(
+  "forgive",
+  "unexpected incident with subsidiary container: %O",
+  "debug"
+)
+const guardTestRunners = theater.createDefaultGuard("forgive", "unexpected incident with test runner: %O")
 class SupportRole extends theater.Role<Support>()(Object) implements Theater.Script<Support> {
   #createComponents() {
     return {

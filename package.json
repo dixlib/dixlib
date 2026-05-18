@@ -1,8 +1,14 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "author": "dixlib@gmail.com",
+  "keywords": [
+    "service locator",
+    "actor system",
+    "immutable data",
+    "distributed system"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dixlib/dixlib.git"
@@ -17,7 +23,8 @@
     ".": "./index.js",
     "./bindings.js": "./build/bindings.js",
     "./package.json": "./package.json",
-    "./rolldown.config.js": "./rolldown.config.js"
+    "./rolldown.config.js": "./rolldown.config.js",
+    "./tsconfig-base.json": "./tsconfig-base.json"
   },
   "types": "./src/api",
   "scripts": {

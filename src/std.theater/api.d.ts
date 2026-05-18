@@ -1,6 +1,7 @@
 declare module "std.theater" {
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
+  import type News from "std.news"
   import type Future from "std.theater.future"
   export default Theater
   /**
@@ -66,6 +67,21 @@ declare module "std.theater" {
       TopRole: Theater.RoleClass<A, P>,
       ...parameters: P
     ): Theater.ActorRef<A>
+    /**
+     * Create a default guard that always returns the same verdict.
+     *
+     * It reports a specific or default message at some severity level, or error level if severity is undefined.
+     *
+     * @param verdict Predetermined verdict
+     * @param message Optional text for news message
+     * @param severity Optional message severity
+     * @returns A guard that reports news and returns the same verdict every time
+     */
+    createDefaultGuard<A extends Theater.Actor>(
+      verdict: Theater.Verdict,
+      message?: string,
+      severity?: News.Severity
+    ): Theater.Guard<A>
   }
   namespace Theater {
     /**

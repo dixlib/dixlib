@@ -1,3 +1,4 @@
+import type News from "std.news"
 import type Theater from "std.theater"
 import type Future from "std.theater.future"
 import { future, fx, news } from "../extern.js"
@@ -19,6 +20,18 @@ export function startActor<A extends Theater.Actor>(
   ...parameters: unknown[]
 ): Theater.ActorRef<A> {
   return director.startChild({ Role: TopRole, parameters, guard: guardToplevel }).self as Theater.ActorRef<A>
+}
+
+export function createDefaultGuard<A extends Theater.Actor>(
+  verdict: Theater.Verdict,
+  message?: string,
+  severity?: News.Severity
+): Theater.Guard<A> {
+  return function* guard(incident: Theater.Incident<A>): Theater.Scene<Theater.Verdict> {
+    const text = message ?? "Unexpected incident: %O"
+    news[severity ?? "error"](text, incident)
+    return verdict
+  }
 }
 
 export class ActorObj {
@@ -422,10 +435,7 @@ function createMessageContext(context: Theater.MessageContext): Theater.MessageC
 // the director is the actor object that supervises all toplevel actors
 const director = new ActorObj(Role()(Object), [])
 // strict supervision for toplevel actors
-function* guardToplevel(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.error("toplevel fatality: %o", incident)
-  return "punish"
-}
+const guardToplevel = createDefaultGuard("punish", "toplevel fatality: %O")
 // report dead letters when an actor terminates with a nonempty inbox
 function reportDeadLetter({ selector, parameters }: ActorMsg) {
   news.warn('dead letter: "%s"/%d', String(selector), parameters.length)

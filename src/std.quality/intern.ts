@@ -61,43 +61,35 @@ class TestRunnerRole extends theater.Role<Quality.TestRunner>()(Object) implemen
     collectorRef(context).generateReport()
   }
 }
-function* guardWatcher(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.error("unexpected incident with default test watcher: %O", incident)
-  return "forgive"
-}
+const guardWatcher = theater.createDefaultGuard("forgive", "unexpected incident with default test watcher: %O")
 // default watcher reports progress as debug news messages
 class DefaultWatcherRole
   extends theater.Role<Quality.TestWatcher>()(Object)
   implements Theater.Script<Quality.TestWatcher>
 {
   @theater.Play
-  *beginPreparation(name: Dixlib.ServiceName, bundle: string, start: Temporal.Instant): Theater.Scene {
+  *beginPreparation(name: Dixlib.ServiceName, bundle: string, start: number): Theater.Scene {
     news.debug("started service test preparation of service '%s' in bundle %s at %s", name, bundle, start)
   }
   @theater.Play
   *endPreparation(
     name: Dixlib.ServiceName,
     bundle: string,
-    start: Temporal.Instant,
-    stop: Temporal.Instant,
+    start: number,
+    stop: number,
     failure?: Error | undefined
   ): Theater.Scene {
     news.debug(
-      "completed service test preparation of service '%s' in bundle %s at %s (%s) [%O]",
+      "completed service test preparation of service '%s' in bundle %s at %s (%s ms) [%O]",
       name,
       bundle,
       stop,
-      stop.since(start),
+      (stop - start).toFixed(3),
       failure ?? "success"
     )
   }
   @theater.Play
-  *beginOperationTest(
-    name: Dixlib.ServiceName,
-    bundle: string,
-    operation: never,
-    start: Temporal.Instant
-  ): Theater.Scene {
+  *beginOperationTest(name: Dixlib.ServiceName, bundle: string, operation: never, start: number): Theater.Scene {
     news.debug("started service operation test '%s'.%s in bundle %s at %s", name, operation, bundle, start)
   }
   @theater.Play
@@ -105,46 +97,46 @@ class DefaultWatcherRole
     name: Dixlib.ServiceName,
     bundle: string,
     operation: never,
-    start: Temporal.Instant,
-    stop: Temporal.Instant,
+    start: number,
+    stop: number,
     failure?: Error | undefined
   ): Theater.Scene {
     news.debug(
-      "completed service operation test '%s'.%s in bundle %s at %s (%s) [%O]",
+      "completed service operation test '%s'.%s in bundle %s at %s (%s ms) [%O]",
       name,
       operation,
       bundle,
       stop,
-      stop.since(start),
+      (stop - start).toFixed(3),
       failure ?? "success"
     )
   }
   @theater.Play
-  *beginDestruction(name: Dixlib.ServiceName, bundle: string, start: Temporal.Instant): Theater.Scene {
+  *beginDestruction(name: Dixlib.ServiceName, bundle: string, start: number): Theater.Scene {
     news.debug("started service test destruction of service '%s' in bundle %s at %s", name, bundle, start)
   }
   @theater.Play
   *endDestruction(
     name: Dixlib.ServiceName,
     bundle: string,
-    start: Temporal.Instant,
-    stop: Temporal.Instant,
+    start: number,
+    stop: number,
     failure?: Error | undefined
   ): Theater.Scene {
     news.debug(
-      "completed service test destruction of service '%s' in bundle %s at %s (%s) [%O]",
+      "completed service test destruction of service '%s' in bundle %s at %s (%s ms) [%O]",
       name,
       bundle,
       stop,
-      stop.since(start),
+      (stop - start).toFixed(3),
       failure ?? "success"
     )
   }
 }
-function* guardCollector(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
-  news.error("aborting after unexpected incident with test collector: %O", incident)
-  return "punish"
-}
+const guardCollector = theater.createDefaultGuard(
+  "punish",
+  "aborting after unexpected incident with test collector: %O"
+)
 interface Collector extends Theater.Sender {
   generateReport(): Theater.OneWay
 }
@@ -203,6 +195,7 @@ class CollectorRole extends theater.Role<Collector>()(Object) implements Theater
   }
 }
 function* guardTester(incident: Theater.Incident<Theater.Actor>): Theater.Scene<Theater.Verdict> {
+  // escalate to collector
   throw new Error("unexpected incident with service tester", { cause: incident })
 }
 interface ServiceTester extends Theater.Actor {
@@ -225,9 +218,9 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
     // call default export of test module, passing assertion support and service provider as arguments
     return testModule.default({ assert, provider })
   }
-  *#prepare({ prepare }: Quality.TestHooks): Theater.Scene<Temporal.Instant> {
-    const start = Temporal.Now.instant()
-    let stop: Temporal.Instant, failure: Error | undefined
+  *#prepare({ prepare }: Quality.TestHooks): Theater.Scene<number> {
+    const start = performance.now()
+    let stop: number, failure: Error | undefined
     this.#watcherRef().beginPreparation(this.#name, this.#bundle, start)
     if (prepare) {
       try {
@@ -235,7 +228,7 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
       } catch (problem) {
         failure = new Error("preparation failure", { cause: problem })
       }
-      stop = Temporal.Now.instant()
+      stop = performance.now()
     } else {
       stop = start
     }
@@ -247,9 +240,9 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
       return start
     }
   }
-  *#destroy({ destroy }: Quality.TestHooks): Theater.Scene<Temporal.Instant> {
-    const start = Temporal.Now.instant()
-    let stop: Temporal.Instant, failure: Error | undefined
+  *#destroy({ destroy }: Quality.TestHooks): Theater.Scene<number> {
+    const start = performance.now()
+    let stop: number, failure: Error | undefined
     this.#watcherRef().beginDestruction(this.#name, this.#bundle, start)
     if (destroy) {
       try {
@@ -257,7 +250,7 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
       } catch (problem) {
         failure = new Error("destruction failure", { cause: problem })
       }
-      stop = Temporal.Now.instant()
+      stop = performance.now()
     } else {
       stop = start
     }
@@ -269,7 +262,7 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
     operation: keyof Dixlib.Service[Name],
     testCase: () => Promise<void> | void
   ): Theater.Scene<Quality.ServiceTestReport<Name>["operation"][keyof Dixlib.Service[Name]]> {
-    const start = Temporal.Now.instant()
+    const start = performance.now()
     this.#watcherRef().beginOperationTest(this.#name, this.#bundle, operation, start)
     let failure: Error | undefined
     try {
@@ -279,7 +272,7 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
       failure = fx.erroneous(problem)
       ++this.#failureCount
     }
-    const stop = Temporal.Now.instant()
+    const stop = performance.now()
     this.#watcherRef().endOperationTest(this.#name, this.#bundle, operation, start, stop, failure)
     return { failure, start, stop }
   }
