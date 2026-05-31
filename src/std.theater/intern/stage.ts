@@ -1,5 +1,22 @@
-import { kernel } from "../extern.js"
+import type Future from "std.theater.future"
+import { future, kernel } from "../extern.js"
 import type { ActorObj } from "./actor.js"
+
+// signal idle theater
+export function nextIdle(): Future.Cue<void> {
+  return future.once(
+    (reveal, cue) => {
+      // when begin is called, there is at least one actor active on stage
+      idleRevelations.set(cue, reveal)
+    },
+    (revealing, cue) => {
+      // remove pending idle revelation
+      if (!revealing && !idleRevelations.delete(cue)) {
+        throw new Error("invalid idle revelation")
+      }
+    }
+  )
+}
 
 // move actor to its current stage status
 export function schedule(actorObj: ActorObj) {
@@ -78,9 +95,18 @@ function showEntertainment(budget: number) {
     willEntertain = true
     // 10 ms budget for macro entertainmet
     kernel.queueMacrotask(macroEntertainment)
+  } else {
+    // reveal on insertion order, one by one, because a revelation can cancel another pending idle revelation
+    while (idleRevelations.size > 0) {
+      const [[cue, reveal]] = idleRevelations
+      idleRevelations.delete(cue)
+      reveal({})
+    }
   }
 }
 // 6 ms budget for micro entertainmet
 const microEntertainment = () => showEntertainment(6)
 // 10 ms budget for macro entertainmet
 const macroEntertainment = () => showEntertainment(10)
+// all pending revelations of an idle theater
+const idleRevelations = new Map<Future.Cue<void>, Future.Reveal<void>>()

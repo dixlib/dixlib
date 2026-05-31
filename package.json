@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "author": "dixlib@gmail.com",
   "keywords": [
     "service locator",
@@ -23,8 +23,9 @@
     ".": "./index.js",
     "./bindings.js": "./build/bindings.js",
     "./package.json": "./package.json",
-    "./rolldown.config.js": "./rolldown.config.js",
-    "./tsconfig-base.json": "./tsconfig-base.json"
+    "./tsconfig-base.json": "./tsconfig-base.json",
+    "./biome.json": "./biome.json",
+    "./rolldown.config.js": "./rolldown.config.js"
   },
   "types": "./src/api",
   "scripts": {
@@ -33,8 +34,8 @@
     "lint": "npx @biomejs/biome check --verbose"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
-    "rolldown": "^1.0.1",
+    "@biomejs/biome": "^2.4.16",
+    "rolldown": "^1.0.3",
     "typescript": "^6.0.3"
   },
   "workspaces": [

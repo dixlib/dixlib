@@ -19,22 +19,21 @@ declare module "std.data.definition" {
      * * TypeExpression ::= TypeExpr1 | (Variable "=" TypeExpr1)+ TypeExpr1
      * * TypeExpr1 ::= TypeExpr2 "?"?
      * * TypeExpr2 ::= TypeExpr3 ("|" TypeExpr3)*
-     * * TypeExpr3 ::= "*"
-     * * | "boolean" | "int32" | "number" | "string"
-     * * | "false" | "true" | decimal | quote
-     * * | typename ("(" TypeExpr1 ("," TypeExpr1)* ")")?
-     * * | "[" TypeExpr1 "]"
-     * * | "<" TypeExpr1 ">"
-     * * | "(" TypeExpr1 ("," TypeExpr1)+ ")"
-     * * | "{" (selector ":" TypeExpr1 ("," selector ":" TypeExpr1)* ","?)? "}"
-     * * | Variable
+     * * TypeExpr3 ::= "*" | SimpleExpr | ListExpr | DictionaryExpr | TupleExpr | RecordExpr | ReferenceExpr
+     * * SimpleExpr ::= "boolean" | "int32" | "number" | "string" | "false" | "true" | decimal | quote
+     * * ListExpr ::= "[" TypeExpr1 "]"
+     * * DictionaryExpr ::= "<" TypeExpr1 ">"
+     * * TupleExpr ::= "(" TypeExpr1 ("," TypeExpr1)+ ")"
+     * * RecordExpr ::= "{" (Field ("," Field)* ","?)? "}"
+     * * ReferenceExpr ::= typename ("(" TypeExpr1 ("," TypeExpr1)* ")")? | Variable
+     * * Field ::= selector ":" TypeExpr1 | "/"  ReferenceExpr
      * * Variable ::= "a" | "b" | "c" | ... | "y" | "z"
      *
      * Lexical tokens:
      * * decimal = natural number in decimal notation e.g., 321.
-     * * quote  = qouted sentence e.g., "the quick brown fox"
+     * * quote  = qouted text e.g., "the quick brown fox"
      * * typename = name of type starts with a capital and contains at least one dot separator e.g., Data.List
-     * * selector = identifier (or keyword) that starts with a letter followed by digits and letters e.g., firstName
+     * * selector = selector starts with a letter followed by digits and letters e.g., firstName
      *
      * @param text Source text of type expression
      * @param location Optional location of source text
@@ -89,9 +88,9 @@ declare module "std.data.definition" {
       match<T, P extends unknown[]>(pattern: TypeExpressionPattern<T, P>, ...parameters: P): T
     }
     /**
-     * The type expressions of all fields in a record expression.
+     * A fields chunk is either the spread of a record reference or a streak of associations.
      */
-    type FieldExpressions = { readonly [selector: string]: TypeExpression }
+    type FieldsChunk = TypeExpression | { readonly [selector: string]: TypeExpression }
     /**
      * Reserved names of basic types.
      */
@@ -143,10 +142,10 @@ declare module "std.data.definition" {
        *
        * @param expression Record input expression
        * @param parameters Supplied function parameters
-       * @param fields Type expressions of record fields
+       * @param chunks Zero or more chunks with field spreads or streaks
        * @returns Output result
        */
-      record?(expression: TypeExpression, parameters: P, fields: FieldExpressions): T
+      record?(expression: TypeExpression, parameters: P, chunks: ReadonlyArray<FieldsChunk>): T
       /**
        * Compute output result.
        *

@@ -45,7 +45,7 @@ declare module "std.system" {
      * The top system identifies itself as zero.
      * All other systems are direct or indirect subsystems, derived from this top system.
      *
-     * @returns A number
+     * @returns A nonnegative integer
      */
     id(): number
     /**
@@ -114,7 +114,7 @@ declare module "std.system" {
       report<P extends unknown[]>(message: LogMessage<P>): Theater.OneWay
     }
     /**
-     * The system logger enriches news messages with an origin.
+     * The system logger enriches news messages with a system origin.
      */
     interface LogMessage<P extends unknown[]> extends News.Message<P> {
       /**
@@ -153,6 +153,15 @@ declare module "std.system" {
        * The id (number) is returned to the sender.
        */
       id(): Theater.OneWay
+      /**
+       * This setup message is sent from the subsystem when it has completed a system start.
+       *
+       * The default behavior reports an informal news message.
+       * Specialized subsidiary role classes extend the default behavior.
+       *
+       * This message should not be sent by user code.
+       */
+      setupSubsystem(): Theater.OneWay
     }
     /**
      * A container is a component that holds zero or more component actors.

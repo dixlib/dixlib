@@ -1,4 +1,4 @@
-import type { Default } from "dixlib"
+import type Dixlib from "dixlib"
 import type Kernel from "std.kernel"
 import type Loader from "std.loader"
 
@@ -16,7 +16,12 @@ export interface Initial {
 export default function main({ initial, parentPort, exit }: Kernel.Main<Initial>) {
   const { ancestry } = initial
   inherited = { parentPort, ancestry, exit }
-  startSubsystem(initial).catch(reason => console.error("Subsystem failure: %O", reason))
+  startSubsystem(initial).catch(reason => {
+    // report an error on the console, because logger may not be operational
+    console.error("subsystem failure: %O", reason)
+    // explicitly stop this worker (just in case obsolete event-handlers were installed)
+    exit()
+  })
 }
 
 // export info that was inherited from parent system
@@ -29,9 +34,7 @@ export let inherited: {
 // ----------------------------------------------------------------------------------------------------------------- //
 async function startSubsystem({ dixlib, bundleStack }: Initial) {
   // import "dixlib" with specifier from parent system
-  const { default: startSystem }: Default = await import(dixlib)
+  const { default: startSystem }: Dixlib.DefaultExport = await import(dixlib)
   // start child system with given bundle stack
-  const subsystem = await startSystem(bundleStack)
-  //TODO: Startup service
-  subsystem.loader().provide
+  await startSystem(bundleStack)
 }

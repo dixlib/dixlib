@@ -2,7 +2,7 @@ import type Kernel from "std.kernel"
 import type Loader from "std.loader"
 import type System from "std.system"
 import type Theater from "std.theater"
-import { future, kernel, theater } from "../extern.js"
+import { future, kernel, news, theater } from "../extern.js"
 import { type Initial, inherited } from "../main.js"
 import { ancestry } from "./info.js"
 import { root } from "./root.js"
@@ -19,6 +19,7 @@ const dixlib = new URL("../../index.js", import.meta.url).href
 class SubsidiaryRole extends theater.Role<System.Subsidiary>()(Object) implements Theater.Script<System.Subsidiary> {
   #id: number
   #worker: Kernel.Worker | undefined
+  #settingUp: boolean
   protected *initializeRole(bundleStack: Loader.Bindings[]): Theater.Scene<void> {
     yield* super.initializeRole()
     // allocate next available system id from top system (or from the local system if this is the top system)
@@ -44,9 +45,18 @@ class SubsidiaryRole extends theater.Role<System.Subsidiary>()(Object) implement
     super()
     this.#id = -1
     this.#worker = void 0
+    this.#settingUp = false
   }
   @theater.Play *id(): Theater.Scene {
     this.return<number>(this.#id)
+  }
+  @theater.Play *setupSubsystem(): Theater.Scene {
+    if (this.#settingUp) {
+      throw new Error("cannot setup subsidiary twice")
+    } else {
+      this.#settingUp = true
+      news.info("setting up subsystem %d", this.#id)
+    }
   }
 }
 // associate supervised subsystem with its parent port in the top network

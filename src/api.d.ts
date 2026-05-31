@@ -7,6 +7,7 @@
 /// <reference path="./std.fx/api.d.ts" />
 /// <reference path="./std.kernel/api.d.ts" />
 /// <reference path="./std.loader/api.d.ts" />
+/// <reference path="./std.net/api.d.ts" />
 /// <reference path="./std.news/api.d.ts" />
 /// <reference path="./std.quality/api.d.ts" />
 /// <reference path="./std.syntax/api.d.ts" />
@@ -24,6 +25,7 @@ declare module "dixlib" {
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
   import type Loader from "std.loader"
+  import type Net from "std.net"
   import type News from "std.news"
   import type Quality from "std.quality"
   import type Syntax from "std.syntax"
@@ -46,6 +48,7 @@ declare module "dixlib" {
     readonly "std.fx": Fx
     readonly "std.kernel": Kernel
     readonly "std.loader": Loader
+    readonly "std.net": Net
     readonly "std.news": News
     readonly "std.quality": Quality
     readonly "std.syntax": Syntax
@@ -55,9 +58,24 @@ declare module "dixlib" {
     readonly "std.theater.future": Future
   }
   /**
+   * Cross-cutting service aspects.
+   *
+   * This interface is intended to be augmented in services that add a service aspect.
+   */
+  export interface ServiceAspects {
+    /**
+     * If true, a transient api module provides the bundled service interface and namespace.
+     */
+    readonly specification?: boolean
+  }
+  /**
    * A service name at compile time is restricted to known services.
    */
   export type ServiceName = keyof Service
+  /**
+   * A service aspect at compile time is restricted to known aspects.
+   */
+  export type ServiceAspect = keyof ServiceAspects
   /**
    * A service contract is passed to a contractor.
    */
@@ -79,34 +97,19 @@ declare module "dixlib" {
     former?(): Promise<Service[Name]>
   }
   /**
-   * Cross-cutting service aspects.
-   *
-   * This interface is intended to be augmented in services that add a service aspect.
-   */
-  export interface ServiceAspects {
-    /**
-     * If true, a transient api module provides the bundled service interface and namespace.
-     */
-    readonly specification?: boolean
-  }
-  /**
    * Service bindings map a service name to bound service aspects.
    */
   export type ServiceBindings = {
     readonly [Name in ServiceName]?: ServiceAspects
   }
   /**
-   * A service aspect at compile time is restricted to known aspects.
+   * Default export starts systems and subsystems.
    */
-  export type ServiceAspect = keyof ServiceAspects
+  export type DefaultExport = { readonly default: typeof startSystem }
   /**
    * Start a new system.
    * @param bundleStack Bindings of bundle stack
    * @returns A promise of the system provider
    */
   export function startSystem(bundleStack: Loader.Bindings[]): Promise<System>
-  /**
-   * Default export starts systems and subsystems.
-   */
-  export type Default = { readonly default: typeof startSystem }
 }

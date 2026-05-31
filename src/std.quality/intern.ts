@@ -295,7 +295,11 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
   @theater.Play
   *testService(collectorRef: Theater.ActorRef<Collector>): Theater.Scene {
     const [hooks, testCases] = yield* this.#loadServiceTest()
-    collectorRef().return<Quality.ServiceTestReport<Name>>({
+    // create report before dereferencing the collector ref
+    // if not, a theater incident in this service tester results in a bad contextual state for the collector
+    // the collector is the supervisor, and supervising an incident will dereference the collector ref again,
+    // before the return message has been sent, causing a bad contextual state in the collector
+    const report: Quality.ServiceTestReport<Name> = {
       name: this.#name,
       bundle: this.#bundle,
       start: yield* this.#prepare(hooks),
@@ -303,7 +307,10 @@ class ServiceTesterRole<Name extends Dixlib.ServiceName>
       successCount: this.#successCount,
       failureCount: this.#failureCount,
       stop: yield* this.#destroy(hooks),
-    })
+    }
+    // return service test report to collector
+    collectorRef().return(report)
+    // terminate actor after returning the report
     this.exitSelf()
   }
 }

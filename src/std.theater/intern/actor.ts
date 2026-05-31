@@ -216,15 +216,17 @@ export class ActorObj {
     this.#context = context
   }
   send(selector: string | symbol, parameters: unknown[]): Theater.OneWay {
+    const context = this.#context
+    if (!context) {
+      throw new Error("invalid contextual state")
+    }
+    // always reset context, even when actor is already a ghost
+    this.#context = void 0
     if (!this.#supervisor) {
       // report dead letter warning; a dead letter is sent to a ghost actor
       news.warn('dead letter: "%s"/%d', String(selector), parameters.length)
     } else {
-      if (!this.#context) {
-        throw new Error("invalid contextual state")
-      }
-      const message = new ActorMsg(selector, parameters, this.#context)
-      this.#context = void 0
+      const message = new ActorMsg(selector, parameters, context)
       // if actor is suspended or already working on another message, add this message to the inbox
       if (this.#suspended || this.#message) {
         this.#inbox ??= new Set()

@@ -27,15 +27,17 @@ interface RootNode extends Syntax.Node {
 }
 // positions of type variables in scope when parsing
 type Scope = { readonly [name: string]: number }
+// streak of record fields
+type Streak = { [selector: string]: TypeExpression }
 // cache parsed type expressions
 const expressionCache: { [text: string]: TypeExpression } = Object.create(null)
 const lexicon = syntax.createLexicon({
   whitespace: /\s+/,
   typename: /[A-Z][0-9A-Za-z]*(?:\.[A-Za-z][0-9A-Za-z]*)+/,
   selector: /[A-Za-z][0-9A-Za-z]*/,
-  symbol: ["(", ",", ")", "[", "]", "{", ":", "}", "<", ">", "=", "|", "?", "*"],
-  decimal: /0|[1-9][0-9]{1,8}/,
-  text: /"[\w\-\] !@#$%^&*()_~={}[|:;'<>,./?]{0,99}"/,
+  symbol: ["*", "[", "]", "<", ">", "(", ",", ")", "{", ":", "/", "}", "|", "?", "="],
+  decimal: /0|[1-9][0-9]{0,8}/,
+  text: /"[\w\-\] !@#$%^&*()`~+={}[|:;'<>,./?]{0,99}"/,
 })
 const parseSource = syntax.createParser({ lexicon, insignificance: { ignore: ["whitespace"] }, parseRoot })
 const letterRegex = /^[a-z]$/
@@ -64,8 +66,18 @@ function combineMask(mask: number, expression: TypeExpression): number {
 function combineMasks(expressions: TypeExpression[]) {
   return expressions.reduce(combineMask, 0)
 }
-function combineFieldMask(mask: number, [_, expression]: [string, TypeExpression]) {
-  return combineMask(mask, expression)
+function combineChunksMask(chunks: Definition.FieldsChunk[]) {
+  let mask = 0
+  for (const chunk of chunks) {
+    if (isTypeExpression(chunk)) {
+      mask |= combineMask(mask, chunk as TypeExpression)
+    } else {
+      for (const selector in chunk) {
+        mask |= combineMask(mask, chunk[selector] as TypeExpression)
+      }
+    }
+  }
+  return mask
 }
 function parseRoot(scanner: Syntax.Scanner): Syntax.ParseResult<RootNode> {
   const warnings: string[] = []
@@ -151,7 +163,7 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
   //    | "[" TypeExpr1 "]"
   //    | "<" TypeExpr1 ">"
   //    | "(" TypeExpr1 ("," TypeExpr1)+ ")"
-  //    | "{" (selector ":" TypeExpr1 ("," selector ":" TypeExpr1)* ","?)? "}"
+  //    | "{" (Field ("," Field)* ","?)? "}"
   //    | TypeVariable
   if (scanner.accept("*")) {
     expressionCache["*"] ??= new WildcardExpression("*")
@@ -213,24 +225,37 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
     expressionCache[text] ??= new TupleExpression(text, parts)
     return expressionCache[text]
   } else if (scanner.accept("{")) {
-    const fields: { [name: string]: TypeExpression } = Object.create(null)
-    if (scanner.peek(lexicon.kind.selector)) {
-      do {
-        const selectorToken = scanner.expect(lexicon.kind.selector)
-        const name = scanner.extract(selectorToken)
-        if (fields[name]) {
-          throw scanner.failure("duplicate record field", selectorToken)
+    const chunks: Definition.FieldsChunk[] = []
+    const fields = new Set<string>()
+    while (!scanner.peek("}")) {
+      if (scanner.accept("/")) {
+        if (!scanner.peek(lexicon.kind.typename) && !peekVariable(scanner)) {
+          throw scanner.failure("expected a reference to spread", scanner.lookahead)
         }
-        scanner.expect(":")
-        fields[name] = parseTypeExpr1(scanner, scope)
-      } while (scanner.accept(",") && !scanner.peek("}"))
+        chunks.push(parseTypeExpr3(scanner, scope))
+      } else if (scanner.peek(lexicon.kind.selector, ":")) {
+        const streak: Streak = Object.create(null)
+        do {
+          const selectorToken = scanner.expect(lexicon.kind.selector)
+          const selector = scanner.extract(selectorToken)
+          if (fields.has(selector)) {
+            throw scanner.failure("duplicate record field", selectorToken)
+          }
+          fields.add(selector)
+          scanner.expect(":")
+          streak[selector] = parseTypeExpr1(scanner, scope)
+        } while (scanner.peek(",", lexicon.kind.selector, ":") && scanner.accept(","))
+        chunks.push(Object.freeze(streak))
+      } else {
+        throw scanner.failure("expected field record spread or streak", scanner.lookahead)
+      }
+      if (scanner.peek(",", "}") || !scanner.peek("}")) {
+        scanner.expect(",")
+      }
     }
     scanner.expect("}")
-    const text = `{${Object.keys(fields)
-      .sort()
-      .map(name => `${name}:${fields[name].text}`)
-      .join(",")}}`
-    expressionCache[text] ??= new RecordExpression(text, fields)
+    const text = `{${chunks.map(unparseChunk).join(",")}}`
+    expressionCache[text] ??= new RecordExpression(text, chunks)
     return expressionCache[text]
   } else if (peekVariable(scanner)) {
     const selectorToken = scanner.expect(lexicon.kind.selector)
@@ -244,6 +269,17 @@ function parseTypeExpr3(scanner: Syntax.Scanner, scope: Scope): TypeExpression {
     return expressionCache[text]
   } else {
     throw scanner.failure("expected start of type expression but found", scanner.lookahead)
+  }
+}
+function unparseChunk(chunk: Definition.FieldsChunk): string {
+  if (isTypeExpression(chunk)) {
+    return `/${chunk.text}`
+  } else {
+    const associations: string[] = []
+    for (const selector of Object.keys(chunk).sort()) {
+      associations.push(`${selector}:${chunk[selector].text}`)
+    }
+    return associations.join(",")
   }
 }
 const substitute = Symbol("substitute method")
@@ -496,11 +532,7 @@ class TupleExpression extends TypeExpression {
   [substitute](parameters: ReadonlyArray<Definition.TypeExpression>): Definition.TypeExpression {
     const parts: TypeExpression[] = []
     for (const part of this.#parts) {
-      if (!part.hasFreeVariables) {
-        parts.push(part)
-      } else {
-        parts.push(part[substitute](parameters) as TypeExpression)
-      }
+      parts.push(part.hasFreeVariables ? (part[substitute](parameters) as TypeExpression) : part)
     }
     const text = `(${parts.map(textual).join(",")})`
     expressionCache[text] ??= new TupleExpression(text, parts)
@@ -508,28 +540,33 @@ class TupleExpression extends TypeExpression {
   }
 }
 class RecordExpression extends TypeExpression {
-  readonly #fields: { readonly [name: string]: TypeExpression }
-  constructor(text: string, fields: { readonly [name: string]: TypeExpression }) {
-    super(text, Object.entries(fields).reduce(combineFieldMask, 0))
-    this.#fields = Object.freeze(fields)
+  readonly #chunks: ReadonlyArray<Definition.FieldsChunk>
+  constructor(text: string, chunks: Definition.FieldsChunk[]) {
+    super(text, combineChunksMask(chunks))
+    this.#chunks = Object.freeze(chunks)
   }
   match<T, P extends unknown[]>(pattern: Definition.TypeExpressionPattern<T, P>, ...parameters: P): T {
-    return pattern.record ? pattern.record(this, parameters, this.#fields) : pattern.orelse(this, parameters)
+    return pattern.record ? pattern.record(this, parameters, this.#chunks) : pattern.orelse(this, parameters)
   }
   [substitute](parameters: ReadonlyArray<Definition.TypeExpression>): Definition.TypeExpression {
-    const fields: { [name: string]: TypeExpression } = Object.create(null)
-    for (const fieldKey in this.#fields) {
-      const fieldTypeExpression = this.#fields[fieldKey]
-      const substitution = !fieldTypeExpression.hasFreeVariables
-        ? fieldTypeExpression
-        : (fieldTypeExpression[substitute](parameters) as TypeExpression)
-      fields[fieldKey] = substitution
+    const chunks: Definition.FieldsChunk[] = []
+    for (const chunk of this.#chunks) {
+      if (isTypeExpression(chunk)) {
+        const expression = chunk as TypeExpression
+        chunks.push(expression.hasFreeVariables ? expression[substitute](parameters) : expression)
+      } else {
+        const streak: Streak = Object.create(null)
+        for (const selector in chunk) {
+          const expression = chunk[selector] as TypeExpression
+          streak[selector] = expression.hasFreeVariables
+            ? (expression[substitute](parameters) as TypeExpression)
+            : expression
+        }
+        chunks.push(Object.freeze(streak))
+      }
     }
-    const text = `{${Object.keys(fields)
-      .sort()
-      .map(name => `${name}:${fields[name].text}`)
-      .join(",")}}`
-    expressionCache[text] ??= new RecordExpression(text, fields)
+    const text = `{${chunks.map(unparseChunk).join(",")}}`
+    expressionCache[text] ??= new RecordExpression(text, chunks)
     return expressionCache[text]
   }
 }

@@ -3,15 +3,16 @@ import startSystem from "dixlib"
 try {
   const start = performance.now()
   const system = await startSystem([])
-  const stop = performance.now()
   const loader = system.loader()
-  const [assert, data, definition, future, kernel, meta, news, portability, syntax, theater] = await loader.use(
+  const stop = performance.now()
+  const [assert, data, definition, future, kernel, meta, net, news, portability, syntax, theater] = await loader.use(
     "std.assert",
     "std.data",
     "std.data.definition",
     "std.theater.future",
     "std.kernel",
     "std.data.meta",
+    "std.net",
     "std.news",
     "std.data.portability",
     "std.syntax",
@@ -39,6 +40,7 @@ try {
   news.info("%O", system.root().resolve(`subsidiary/${id}`))
   subsystemRef().tada()
   const subloggerRef = theater.startActor(system.Nearby(), id, "logger")
+  subloggerRef().bla()
   subloggerRef().report({
     origin: [42, 5, 0],
     timestamp: 12345,
@@ -46,12 +48,19 @@ try {
     parameters: ["di bla", id],
     severity: "error",
   })
-  subloggerRef().bla()
   setTimeout(() => subsystemRef().terminate(), 2_000)
-  const space = await meta.inflate("std.data")
-  news.info("binary hashcode %O", space.hashcode)
+  const space = await meta.inflate("std.net")
+  news.info("binary hashcode %O %O", space.hashcode, space)
   news.info("base64 hashcode %O", await kernel.encodeBase64URI(space.hashcode))
-  news.info("test result %O", await system.test())
+  news.info("Net.Options = %O", space.evaluate("Net.Options"))
+  news.info("spread 1 = %O", space.evaluate("Data.Spread(Net.Foo,Net.Bar,{e:64})"))
+  news.info("spread 2 = %O", definition.parseTypeExpression("{/Net.Foo,f:boolean?,e:string}"))
+  news.info("spread 3 = %O", space.evaluate("{/Net.Foo,f:boolean?,e:string}"))
+  news.info("spread 4 = %O", space.evaluate("{/Net.Foo,a:10}"))
+  // news.info("spread 5 = %O", space.evaluate("Net.Baz"))
+  const qualityRef = theater.startActor(system.Nearby(), id, "quality")
+  news.info("test result %O", await system.ask(qualityRef, quality => quality.runTest({})))
+  net.join()
   // space.evaluate("<[(Data.Bla(D.S, string), D.B)]>").match({
   //   string() {
   //     news.log("singular type!")

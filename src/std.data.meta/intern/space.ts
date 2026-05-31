@@ -2,13 +2,14 @@ import type { ServiceName } from "dixlib"
 import type Data from "std.data"
 import type Definition from "std.data.definition"
 import type Meta from "std.data.meta"
-import { definition, loader, news } from "../extern.js"
+import { definition, fn, loader, news } from "../extern.js"
 import {
   boolean,
   createDummy,
   dictionary,
   equalType,
   int32,
+  isDummy,
   list,
   literal,
   number,
@@ -145,11 +146,24 @@ const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evalua
     const elementaryType = evaluation.evaluateNested(elementary)
     return evaluation.rememberDummyAs(expression, dictionary(elementaryType))
   },
-  record(expression, [evaluation], fields) {
+  record(expression, [evaluation], chunks) {
     evaluation.introduceDummy(expression)
     const fieldTypes: { [fieldName: string]: Meta.Type<Data.Value> } = {}
-    for (const fieldName in fields) {
-      fieldTypes[fieldName] = evaluation.evaluateNested(fields[fieldName])
+    for (const chunk of chunks) {
+      if (definition.isTypeExpression(chunk)) {
+        const spread = evaluation.evaluateNested(chunk)
+        if (isDummy(spread) || !spread.match(isRecordType)) {
+          throw new Error(evaluation.failure(`with spread of ${chunk.text}`))
+        }
+        const spreadFields = spread.match(recordFieldTypes)
+        for (const selector in spreadFields) {
+          fieldTypes[selector] = spreadFields[selector]
+        }
+      } else {
+        for (const selector in chunk) {
+          fieldTypes[selector] = evaluation.evaluateNested(chunk[selector])
+        }
+      }
     }
     return evaluation.rememberDummyAs(expression, record(fieldTypes))
   },
@@ -238,6 +252,18 @@ const extractMacro: Definition.TypeExpressionPattern<
 function compareExpressions(left: Definition.TypeExpression, right: Definition.TypeExpression) {
   return left.text.length - right.text.length
 }
+const isRecordType: Meta.TypePattern<boolean, []> = {
+  record: fn.returnTrue,
+  orelse: fn.returnFalse,
+}
+const recordFieldTypes: Meta.TypePattern<Meta.FieldTypesOf<Data.FieldValues>, []> = {
+  record(_type, _parameters, fieldTypes) {
+    return fieldTypes
+  },
+  orelse() {
+    throw new Error("expected a record type")
+  },
+}
 class Space implements Meta.Space {
   readonly #definitions: Definition.TypeDefinitions
   readonly #hashcode: ArrayBuffer
@@ -305,7 +331,7 @@ async function load(serviceName: ServiceName): Promise<Definition.TypeDefinition
     accu[typeName] = definition.parseTypeExpression(module.definitions[typeName], `${location}@${typeName}`)
   }
   // check for cycles in dependency graph
-  const inclusions = [...new Set(module.include ?? []).values()] as ServiceName[]
+  const inclusions = [...new Set(module.include ?? [])] as ServiceName[]
   for (const dependency of inclusions) {
     dependencies.add(dependency)
     for (const indirect of dependencyGraph[dependency] ?? []) {

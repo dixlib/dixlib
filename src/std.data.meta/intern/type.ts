@@ -83,7 +83,8 @@ export function record<F extends Data.FieldValues>(fields: Meta.FieldTypesOf<F>)
   if (existingTypes) {
     for (const weakly of existingTypes) {
       const candidateType = weakly.deref() as unknown as Meta.Type<Data.Record<F>>
-      if (candidateType && equalFieldType(fields, candidateType.match(recordFieldTypes))) {
+      // dummy type can (temporarily) show up in the record type cache; weak reference will eventually break
+      if (candidateType && !isDummy(candidateType) && equalFieldType(fields, candidateType.match(recordFieldTypes))) {
         return candidateType
       }
     }
@@ -176,6 +177,10 @@ export function swapDummy(dummyType: Meta.Type<Data.Value>, type: Meta.Type<Data
   facade.reset(dummyType, datatype)
   facade.reset(type, dummy)
   return dummyType
+}
+
+export function isDummy(type: Meta.Type<Data.Value>) {
+  return facade.expose(type) === dummy
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //

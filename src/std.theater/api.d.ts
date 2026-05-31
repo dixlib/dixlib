@@ -82,6 +82,14 @@ declare module "std.theater" {
       message?: string,
       severity?: News.Severity
     ): Theater.Guard<A>
+    /**
+     * Obtain a cue that signals an idle theater.
+     *
+     * An idle theater does not have actors that are ready to process (or to continue processing) a message.
+     *
+     * @returna A theater cue
+     */
+    idle(): Future.Cue<void>
   }
   namespace Theater {
     /**
@@ -249,6 +257,7 @@ declare module "std.theater" {
        * This method should not be called directly by user code.
        *
        * @param actorRef Reference to ghost actor
+       * @returns Mourning scene
        */
       protected observeTermination(actorRef: ActorRef): Scene
       /**

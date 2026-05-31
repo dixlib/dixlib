@@ -139,6 +139,46 @@ export default ({ assert, provider }: Quality.ServiceUnderTest<"std.fn">): Quali
     },
     returnTuple() {
       assert.deepEqual([], provider.returnTuple(), "returnTuple without argument should return empty array")
+      assert.deepEqual(
+        [42],
+        provider.returnTuple(42),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [false],
+        provider.returnTuple(false),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [null],
+        provider.returnTuple(null),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [void 0],
+        provider.returnTuple(void 0),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        ["ab"],
+        provider.returnTuple("ab"),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [{}],
+        provider.returnTuple({}),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [{ a: 42, b: true }],
+        provider.returnTuple({ a: 42, b: true }),
+        "returnTuple with one argument should return singleton array with that argument"
+      )
+      assert.deepEqual(
+        [42, false, null, void 0, "ab", { a: 42, b: true }],
+        provider.returnTuple(42, false, null, void 0, "ab", { a: 42, b: true }),
+        "return tuple with several arguments should return all arguments in an array"
+      )
     },
     returnNothing() {
       assert.equal(void 0, provider.returnNothing(), "returnNothing should return undefined")
