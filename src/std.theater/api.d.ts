@@ -1,8 +1,8 @@
 declare module "std.theater" {
+  import type Future from "std.future"
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
   import type News from "std.news"
-  import type Future from "std.theater.future"
   export default Theater
   /**
    * The theater service provides a JavaScript actor system.
@@ -83,13 +83,13 @@ declare module "std.theater" {
       severity?: News.Severity
     ): Theater.Guard<A>
     /**
-     * Obtain a cue that signals an idle theater.
+     * Obtain an event that signals an idle theater.
      *
      * An idle theater does not have actors that are ready to process (or to continue processing) a message.
      *
-     * @returna A theater cue
+     * @returna An event
      */
-    idle(): Future.Cue<void>
+    idle(): Future.Event<void>
   }
   namespace Theater {
     /**
@@ -174,18 +174,18 @@ declare module "std.theater" {
       readonly [K in keyof A]: A[K] extends (...parameters: infer P) => OneWay ? (...parameters: P) => Scene : never
     }
     /**
-     * A scene is a generator over cues.
+     * A scene is a generator over events.
      *
      * Scenes are similar to coroutines.
      * Actors play a scene on the stage to process a message.
      *
-     * If a scene yields a cue, the scene waits for the cue to reveal a signal.
+     * If a scene yields an event, the scene waits for the event to reveal a signal.
      * The yield expression evaluates to this signal when the scene continues.
      *
      * The scene ends when the code returns to the caller.
      */
     //biome-ignore lint/suspicious/noExplicitAny: yield any signal
-    type Scene<T = void> = Generator<Future.Cue<unknown>, T, Future.Signal<any>>
+    type Scene<T = void> = Generator<Future.Event<unknown>, T, Future.Signal<any>>
     /**
      * A role encapsulates the transient state and behavior of an actor.
      *
@@ -313,7 +313,7 @@ declare module "std.theater" {
       /**
        * Stage error.
        */
-      readonly blooper: Error
+      readonly error: Error
       /**
        * Scene selector that offender was executing.
        */

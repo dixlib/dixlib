@@ -14,6 +14,7 @@ export default {
     "src/*/main.ts",
     "src/*/datatype.ts",
     "src/*/test.ts",
+    "src/*/config.ts",
   ]),
   output: { sourcemap: true, format: "es", dir: "build", minify: true },
 }

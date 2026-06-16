@@ -1,8 +1,8 @@
+import type Future from "std.future"
 import type Kernel from "std.kernel"
 import type System from "std.system"
 import type Theater from "std.theater"
-import type Future from "std.theater.future"
-import { concurrency, future, kernel, news, theater } from "../extern.js"
+import { future, kernel, news, theater } from "../extern.js"
 import { id } from "./info.js"
 import { root } from "./root.js"
 
@@ -94,7 +94,7 @@ export function connectSystems(leftId: number, rightId: number): void {
   rightPort.postMessage(leftAssociation, [port2])
 }
 
-export function allocateNextId(): Future.Cue<number> {
+export function allocateNextId(): Future.Event<number> {
   if (kernel.isSupervised()) {
     // subsystems send an allocation message to the top system
     const allocation: Allocation = {}
@@ -103,7 +103,7 @@ export function allocateNextId(): Future.Cue<number> {
     return allocationExchange.consume()
   } else {
     // top system keeps track of next system id
-    return future.spark({ prompt: nextId++ })
+    return future.spark({ result: nextId++ })
   }
 }
 
@@ -144,7 +144,7 @@ type Message = Allocation | Reservation | Association | Connection | OneWay
 // the next id is only valid in the top system
 let nextId = 1
 // rendezvous allocation exchange is only valid in a subsystem
-const allocationExchange = concurrency.createExchange<number>(0)
+const allocationExchange = future.createExchange<number>(0)
 // keep track of expected associations with other systems in top network
 const associating: { [id: number]: PromiseWithResolvers<Kernel.MessagePort> } = Object.create(null)
 // all network portals from this system to other systems in top network

@@ -3,7 +3,7 @@ import type { Contract, Service } from "dixlib"
 export default async ({ use }: Contract<"std.quality">): Promise<Service["std.quality"]> => {
   ;[assert, future, fx, loader, news, theater] = await use(
     "std.assert",
-    "std.theater.future",
+    "std.future",
     "std.fx",
     "std.loader",
     "std.news",
@@ -14,7 +14,7 @@ export default async ({ use }: Contract<"std.quality">): Promise<Service["std.qu
 
 export let assert: Service["std.assert"]
 
-export let future: Service["std.theater.future"]
+export let future: Service["std.future"]
 
 export let fx: Service["std.fx"]
 

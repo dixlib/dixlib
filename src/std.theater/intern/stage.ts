@@ -1,17 +1,17 @@
-import type Future from "std.theater.future"
+import type Future from "std.future"
 import { future, kernel } from "../extern.js"
 import type { ActorObj } from "./actor.js"
 
 // signal idle theater
-export function nextIdle(): Future.Cue<void> {
+export function nextIdle(): Future.Event<void> {
   return future.once(
-    (reveal, cue) => {
+    (reveal, event) => {
       // when begin is called, there is at least one actor active on stage
-      idleRevelations.set(cue, reveal)
+      idleRevelations.set(event, reveal)
     },
-    (revealing, cue) => {
+    (revealing, event) => {
       // remove pending idle revelation
-      if (!revealing && !idleRevelations.delete(cue)) {
+      if (!revealing && !idleRevelations.delete(event)) {
         throw new Error("invalid idle revelation")
       }
     }
@@ -54,7 +54,7 @@ export function busyShowing(it: unknown): ActorObj {
 const active = new Set<ActorObj>()
 // suspended actors are prevented from processing messages
 const suspended = new Set<ActorObj>()
-// blocked actors are waiting on a cue to reveal a signal
+// blocked actors are waiting on an event to reveal a signal
 const blocked = new Set<ActorObj>()
 // ready actors want to go on stage
 const ready = new Set<ActorObj>()
@@ -98,8 +98,8 @@ function showEntertainment(budget: number) {
   } else {
     // reveal on insertion order, one by one, because a revelation can cancel another pending idle revelation
     while (idleRevelations.size > 0) {
-      const [[cue, reveal]] = idleRevelations
-      idleRevelations.delete(cue)
+      const [[event, reveal]] = idleRevelations
+      idleRevelations.delete(event)
       reveal({})
     }
   }
@@ -109,4 +109,4 @@ const microEntertainment = () => showEntertainment(6)
 // 10 ms budget for macro entertainmet
 const macroEntertainment = () => showEntertainment(10)
 // all pending revelations of an idle theater
-const idleRevelations = new Map<Future.Cue<void>, Future.Reveal<void>>()
+const idleRevelations = new Map<Future.Event<void>, Future.Reveal<void>>()

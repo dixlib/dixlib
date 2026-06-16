@@ -1,9 +1,8 @@
 /// <reference path="./std.assert/api.d.ts" />
+/// <reference path="./std.config/api.d.ts" />
 /// <reference path="./std.data/api.d.ts" />
-/// <reference path="./std.data.definition/api.d.ts" />
-/// <reference path="./std.data.meta/api.d.ts" />
-/// <reference path="./std.data.portability/api.d.ts" />
 /// <reference path="./std.fn/api.d.ts" />
+/// <reference path="./std.future/api.d.ts" />
 /// <reference path="./std.fx/api.d.ts" />
 /// <reference path="./std.kernel/api.d.ts" />
 /// <reference path="./std.loader/api.d.ts" />
@@ -13,15 +12,12 @@
 /// <reference path="./std.syntax/api.d.ts" />
 /// <reference path="./std.system/api.d.ts" />
 /// <reference path="./std.theater/api.d.ts" />
-/// <reference path="./std.theater.concurrency/api.d.ts" />
-/// <reference path="./std.theater.future/api.d.ts" />
 declare module "dixlib" {
   import type Assert from "std.assert"
+  import type Config from "std.config"
   import type Data from "std.data"
-  import type Definition from "std.data.definition"
-  import type Meta from "std.data.meta"
-  import type Portability from "std.data.portability"
   import type Fn from "std.fn"
+  import type Future from "std.future"
   import type Fx from "std.fx"
   import type Kernel from "std.kernel"
   import type Loader from "std.loader"
@@ -31,8 +27,6 @@ declare module "dixlib" {
   import type Syntax from "std.syntax"
   import type System from "std.system"
   import type Theater from "std.theater"
-  import type Concurrency from "std.theater.concurrency"
-  import type Future from "std.theater.future"
   /**
    * Map service name to service interface at compile time.
    *
@@ -40,11 +34,10 @@ declare module "dixlib" {
    */
   export interface Service {
     readonly "std.assert": Assert
+    readonly "std.config": Config
     readonly "std.data": Data
-    readonly "std.data.definition": Definition
-    readonly "std.data.meta": Meta
-    readonly "std.data.portability": Portability
     readonly "std.fn": Fn
+    readonly "std.future": Future
     readonly "std.fx": Fx
     readonly "std.kernel": Kernel
     readonly "std.loader": Loader
@@ -54,8 +47,6 @@ declare module "dixlib" {
     readonly "std.syntax": Syntax
     readonly "std.system": System
     readonly "std.theater": Theater
-    readonly "std.theater.concurrency": Concurrency
-    readonly "std.theater.future": Future
   }
   /**
    * Cross-cutting service aspects.

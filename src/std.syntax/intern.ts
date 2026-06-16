@@ -51,8 +51,8 @@ class Lexicon<L extends Syntax.Patterns> implements Syntax.Lexicon<Extract<keyof
           return normalized.exec(text) ? normalized.lastIndex : start
         }
       } else if (Array.isArray(definition)) {
-        // sort nonempty literals strings on descending length
-        const sorted = new Set(definition.filter(nonEmpty).sort(onDescendingLength))
+        // sort distinct nonempty literal strings on descending length
+        const sorted = [...new Set(definition.filter(nonEmpty))].sort(onDescendingLength)
         testers[name] = (text, start) => {
           for (const literal of sorted) {
             if (text.startsWith(literal, start)) {

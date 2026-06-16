@@ -1,6 +1,6 @@
+import type Future from "std.future"
 import type News from "std.news"
 import type Theater from "std.theater"
-import type Future from "std.theater.future"
 import { future, fx, news } from "../extern.js"
 import { Role } from "./role.js"
 import { doNothing, exit, isSceneMethod } from "./scene.js"
@@ -56,7 +56,7 @@ export class ActorObj {
   #context?: Theater.MessageContext
   // if defined, this actor is currently playing a scene to process the message
   #scene?: Theater.Scene
-  // if defined, the actor is currently committed to block on a pending cue in the scene performance
+  // if defined, the actor is currently committed to block on a pending event in the scene performance
   #rollback?: Future.Rollback
   // if defined, this actor is ready to continue the scene with a signal
   #progress?: Future.Signal<unknown>
@@ -131,7 +131,7 @@ export class ActorObj {
     this.#family?.keys().forEach(member => {
       member.#terminate()
     })
-    // rollback pending cue
+    // rollback pending event
     this.#rollback?.()
     // remove from current status
     this.become(void 0)
@@ -178,7 +178,7 @@ export class ActorObj {
   get isSuspended() {
     return this.#suspended
   }
-  // a blocked actor is waiting for a cue to reveal a signal
+  // a blocked actor is waiting for an event to reveal a signal
   get isBlocked() {
     // when a rollback is defined, the message and scene are also defined
     return !this.#suspended && !!this.#rollback
@@ -265,7 +265,7 @@ export class ActorObj {
       throw new Error("actor cannot make progress on stage with a signal, but without a scene")
     }
     if (this.#rollback) {
-      throw new Error("actor cannot perform on stage when scene is still blocked on a cue")
+      throw new Error("actor cannot perform on stage when scene is still blocked on an event")
     }
     // reset progress before the stage performance starts
     const progress = this.#progress as Future.Signal<unknown>
@@ -278,7 +278,7 @@ export class ActorObj {
         // pull next message from inbox when this message has been processed
         this.#pullMessage()
       } else {
-        // either block scene on yielded cue or continue scene with progress when effect is immediate
+        // either block scene on yielded event or continue scene with progress when effect is immediate
         this.#rollback = future.commit(intermediate.value, signal => {
           this.#progress = signal
           // if this.#rollback is defined, the outer commit call has completed, and the effect must be asynchronous
@@ -299,13 +299,13 @@ export class ActorObj {
         return
       }
       // send supervising message to supervisor that deals with incident on stage
-      const blooper = fx.erroneous(problem)
+      const error = fx.erroneous(problem)
       const { selector, parameters } = this.#message as ActorMsg
       this.#message = this.#scene = void 0
       const supervisor = this.#supervisor as ActorObj
       const supervisorRef = supervisor.#self as Theater.ActorRef<BasicActor>
       const offender = this.#self as Theater.ActorRef
-      supervisorRef()[supervising]({ offender, blooper, selector, parameters })
+      supervisorRef()[supervising]({ offender, error, selector, parameters })
     }
     // reschedule actor after stage performance completes, and actor is still alive
     schedule(this)
@@ -384,7 +384,6 @@ interface BasicActor extends Theater.Actor {
   [supervising](incident: Theater.Incident<Theater.Actor>): Theater.OneWay
   [obituary](actor: Theater.ActorRef): Theater.OneWay
 }
-
 // facade hides actor object behind an actor proxy
 const facade = fx.createFacade<Theater.Actor, ActorObj>(
   "std.theater/Actor",

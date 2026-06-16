@@ -1,4 +1,3 @@
-export const include = ["std.data.meta"]
 export const definitions = {
   // int32 is a subtype of number, but it's still a basic number
   "Data.Basic": "boolean|number|string",

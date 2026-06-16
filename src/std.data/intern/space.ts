@@ -1,8 +1,7 @@
 import type { ServiceName } from "dixlib"
 import type Data from "std.data"
-import type Definition from "std.data.definition"
-import type Meta from "std.data.meta"
-import { definition, fn, loader, news } from "../extern.js"
+import { fn, loader, news } from "../extern.js"
+import { isTypeExpression, parseTypeExpression, substituteTypeExpressions } from "./definition.js"
 import {
   boolean,
   createDummy,
@@ -22,7 +21,7 @@ import {
   wildcard,
 } from "./type.js"
 
-export async function inflate(serviceName: ServiceName): Promise<Meta.Space> {
+export async function inflate(serviceName: ServiceName): Promise<Data.Space> {
   const definitions = await loadTypeDefinitions(serviceName)
   const unique = []
   for (const key of Object.keys(definitions).sort()) {
@@ -42,24 +41,24 @@ interface TypeDefinitionsModule {
   readonly definitions: { readonly [name: string]: string }
 }
 class Evaluation {
-  readonly #definitions: Definition.TypeDefinitions
-  readonly #rootExpression: Definition.TypeExpression
-  readonly #cache: Map<Definition.TypeExpression, Meta.Type<Data.Value>>
-  readonly #reversedCache: Map<Meta.Type<Data.Value>, Definition.TypeExpression[]>
-  readonly #pending: Map<Definition.TypeExpression, Meta.Type<Data.Value>>
-  readonly #reversing: Map<Meta.Type<Data.Value>, Set<Definition.TypeExpression>>
+  readonly #definitions: Data.TypeDefinitions
+  readonly #rootExpression: Data.TypeExpression
+  readonly #cache: Map<Data.TypeExpression, Data.Type<Data.Value>>
+  readonly #reversedCache: Map<Data.Type<Data.Value>, Data.TypeExpression[]>
+  readonly #pending: Map<Data.TypeExpression, Data.Type<Data.Value>>
+  readonly #reversing: Map<Data.Type<Data.Value>, Set<Data.TypeExpression>>
   #depth: number
-  #addReversing(expression: Definition.TypeExpression, type: Meta.Type<Data.Value>) {
+  #addReversing(expression: Data.TypeExpression, type: Data.Type<Data.Value>) {
     // keep track of the expressions that evaluated to a certain type
     const expressions = this.#reversing.get(type) ?? new Set()
     expressions.add(expression)
     this.#reversing.set(type, expressions)
   }
   constructor(
-    definitions: Definition.TypeDefinitions,
-    rootExpression: Definition.TypeExpression,
-    cache: Map<Definition.TypeExpression, Meta.Type<Data.Value>>,
-    reversedCached: Map<Meta.Type<Data.Value>, Definition.TypeExpression[]>
+    definitions: Data.TypeDefinitions,
+    rootExpression: Data.TypeExpression,
+    cache: Map<Data.TypeExpression, Data.Type<Data.Value>>,
+    reversedCached: Map<Data.Type<Data.Value>, Data.TypeExpression[]>
   ) {
     this.#rootExpression = rootExpression
     this.#definitions = definitions
@@ -69,7 +68,7 @@ class Evaluation {
     this.#reversing = new Map()
     this.#depth = 0
   }
-  get type(): Meta.Type<Data.Value> {
+  get type(): Data.Type<Data.Value> {
     const type = this.#rootExpression.match(evaluator, this)
     if (this.#pending.size > 0) {
       throw new Error(this.failure("with remaining pending expression(s)"))
@@ -87,10 +86,10 @@ class Evaluation {
   failure(message: string) {
     return `internal error ${message} in evaluation of ${this.#rootExpression.text}`
   }
-  remember(expression: Definition.TypeExpression, type: Meta.Type<Data.Value>): Meta.Type<Data.Value> {
+  remember(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
     this.#addReversing(expression, type)
     if (this.#cache.has(expression)) {
-      const cachedType = this.#cache.get(expression) as Meta.Type<Data.Value>
+      const cachedType = this.#cache.get(expression) as Data.Type<Data.Value>
       if (!equalType(cachedType, type)) {
         throw new Error(this.failure(`with cache conflict for expression ${expression.text}`))
       }
@@ -100,11 +99,11 @@ class Evaluation {
       return type
     }
   }
-  introduceDummy(expression: Definition.TypeExpression) {
+  introduceDummy(expression: Data.TypeExpression) {
     this.#pending.set(expression, createDummy())
   }
-  rememberDummyAs(expression: Definition.TypeExpression, type: Meta.Type<Data.Value>): Meta.Type<Data.Value> {
-    const dummyType = this.#pending.get(expression) as Meta.Type<Data.Value>
+  rememberDummyAs(expression: Data.TypeExpression, type: Data.Type<Data.Value>): Data.Type<Data.Value> {
+    const dummyType = this.#pending.get(expression) as Data.Type<Data.Value>
     if (!this.#pending.delete(expression)) {
       throw new Error(this.failure("while swapping dummy type"))
     }
@@ -112,7 +111,7 @@ class Evaluation {
     this.#addReversing(expression, dummyType)
     return swapDummy(dummyType, type)
   }
-  evaluateNested(expression: Definition.TypeExpression): Meta.Type<Data.Value> {
+  evaluateNested(expression: Data.TypeExpression): Data.Type<Data.Value> {
     const cachedType = this.#pending.get(expression) ?? this.#cache.get(expression)
     if (cachedType) {
       return cachedType
@@ -125,11 +124,11 @@ class Evaluation {
     --this.#depth
     return type
   }
-  resolve(name: string): Definition.TypeExpression | undefined {
+  resolve(name: string): Data.TypeExpression | undefined {
     return this.#definitions[name]
   }
 }
-const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evaluation]> = {
+const evaluator: Data.TypeExpressionPattern<Data.Type<Data.Value>, [Evaluation]> = {
   basic(expression, [evaluation], reserved) {
     return evaluation.remember(expression, basicTypes[reserved])
   },
@@ -148,9 +147,9 @@ const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evalua
   },
   record(expression, [evaluation], chunks) {
     evaluation.introduceDummy(expression)
-    const fieldTypes: { [fieldName: string]: Meta.Type<Data.Value> } = {}
+    const fieldTypes: { [fieldName: string]: Data.Type<Data.Value> } = {}
     for (const chunk of chunks) {
-      if (definition.isTypeExpression(chunk)) {
+      if (isTypeExpression(chunk)) {
         const spread = evaluation.evaluateNested(chunk)
         if (isDummy(spread) || !spread.match(isRecordType)) {
           throw new Error(evaluation.failure(`with spread of ${chunk.text}`))
@@ -169,24 +168,24 @@ const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evalua
   },
   tuple(expression, [evaluation], parts) {
     evaluation.introduceDummy(expression)
-    const tupleTypes: Meta.Type<Data.Value>[] = []
+    const tupleTypes: Data.Type<Data.Value>[] = []
     for (const part of parts) {
       tupleTypes.push(evaluation.evaluateNested(part))
     }
-    return evaluation.rememberDummyAs(expression, tuple(tupleTypes as unknown as Meta.TypesOf<Data.ValueSequence>))
+    return evaluation.rememberDummyAs(expression, tuple(tupleTypes as unknown as Data.TypesOf<Data.ValueSequence>))
   },
   union(expression, [evaluation], alternatives) {
-    const alternativeTypes: Meta.Type<Data.Value>[] = []
+    const alternativeTypes: Data.Type<Data.Value>[] = []
     for (const alternative of alternatives) {
       alternativeTypes.push(evaluation.evaluateNested(alternative))
     }
-    return evaluation.remember(expression, union(alternativeTypes as unknown as Meta.TypesOf<Data.ValueSequence>))
+    return evaluation.remember(expression, union(alternativeTypes as unknown as Data.TypesOf<Data.ValueSequence>))
   },
   wildcard(expression, [evaluation]) {
     return evaluation.remember(expression, wildcard())
   },
   optional(expression, [evaluation], mandatory) {
-    const mandatoryType = evaluation.evaluateNested(mandatory) as Meta.Type<Data.Wildcard>
+    const mandatoryType = evaluation.evaluateNested(mandatory) as Data.Type<Data.Wildcard>
     return evaluation.remember(expression, optional(mandatoryType))
   },
   reference(expression, [evaluation], name) {
@@ -198,11 +197,11 @@ const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evalua
       return evaluation.remember(expression, evaluation.evaluateNested(resolution))
     }
     const [formals, body] = resolution.match(extractMacro)
-    const type = evaluation.evaluateNested(definition.substituteTypeExpressions(body, formals))
+    const type = evaluation.evaluateNested(substituteTypeExpressions(body, formals))
     return evaluation.remember(expression, type)
   },
   macro(expression, [evaluation], formals, body) {
-    const type = evaluation.evaluateNested(definition.substituteTypeExpressions(body, formals))
+    const type = evaluation.evaluateNested(substituteTypeExpressions(body, formals))
     return evaluation.remember(expression, type)
   },
   application(expression, [evaluation], name, actuals) {
@@ -218,11 +217,11 @@ const evaluator: Definition.TypeExpressionPattern<Meta.Type<Data.Value>, [Evalua
     // extract formals and body from macro resolution
     const [formals, body] = resolution.match(extractMacro)
     // determine substitution parameters from formal and actual arguments
-    const parameters: Definition.TypeExpression[] = []
+    const parameters: Data.TypeExpression[] = []
     for (let i = 0; i < resolution.arity; ++i) {
       parameters.push(i < actuals.length ? actuals[i] : formals[i])
     }
-    const type = evaluation.evaluateNested(definition.substituteTypeExpressions(body, parameters))
+    const type = evaluation.evaluateNested(substituteTypeExpressions(body, parameters))
     return evaluation.remember(expression, type)
   },
   variable(expression, [evaluation]) {
@@ -238,10 +237,7 @@ const basicTypes = {
   number: number(),
   string: string(),
 }
-const extractMacro: Definition.TypeExpressionPattern<
-  [ReadonlyArray<Definition.TypeExpression>, Definition.TypeExpression],
-  []
-> = {
+const extractMacro: Data.TypeExpressionPattern<[ReadonlyArray<Data.TypeExpression>, Data.TypeExpression], []> = {
   macro(_expression, _parameters, formals, body) {
     return [formals, body]
   },
@@ -249,14 +245,14 @@ const extractMacro: Definition.TypeExpressionPattern<
     throw new Error("internal error in extraction of macro formals")
   },
 }
-function compareExpressions(left: Definition.TypeExpression, right: Definition.TypeExpression) {
+function compareExpressions(left: Data.TypeExpression, right: Data.TypeExpression) {
   return left.text.length - right.text.length
 }
-const isRecordType: Meta.TypePattern<boolean, []> = {
+const isRecordType: Data.TypePattern<boolean, []> = {
   record: fn.returnTrue,
   orelse: fn.returnFalse,
 }
-const recordFieldTypes: Meta.TypePattern<Meta.FieldTypesOf<Data.FieldValues>, []> = {
+const recordFieldTypes: Data.TypePattern<Data.FieldTypesOf<Data.FieldValues>, []> = {
   record(_type, _parameters, fieldTypes) {
     return fieldTypes
   },
@@ -264,16 +260,16 @@ const recordFieldTypes: Meta.TypePattern<Meta.FieldTypesOf<Data.FieldValues>, []
     throw new Error("expected a record type")
   },
 }
-class Space implements Meta.Space {
-  readonly #definitions: Definition.TypeDefinitions
+class Space implements Data.Space {
+  readonly #definitions: Data.TypeDefinitions
   readonly #hashcode: ArrayBuffer
-  readonly #cache: Map<Definition.TypeExpression, Meta.Type<Data.Value>>
-  readonly #reversedCache: Map<Meta.Type<Data.Value>, Definition.TypeExpression[]>
-  constructor(definitions: Definition.TypeDefinitions, hashcode: ArrayBuffer) {
+  readonly #cache: Map<Data.TypeExpression, Data.Type<Data.Value>>
+  readonly #reversedCache: Map<Data.Type<Data.Value>, Data.TypeExpression[]>
+  constructor(definitions: Data.TypeDefinitions, hashcode: ArrayBuffer) {
     this.#definitions = definitions
     this.#hashcode = hashcode
-    this.#cache = new Map<Definition.TypeExpression, Meta.Type<Data.Value>>()
-    this.#reversedCache = new Map<Meta.Type<Data.Value>, Definition.TypeExpression[]>()
+    this.#cache = new Map<Data.TypeExpression, Data.Type<Data.Value>>()
+    this.#reversedCache = new Map<Data.Type<Data.Value>, Data.TypeExpression[]>()
   }
   get definitions() {
     return this.#definitions
@@ -281,32 +277,31 @@ class Space implements Meta.Space {
   get hashcode() {
     return this.#hashcode
   }
-  evaluate<T extends Data.Value>(expressionSource: Definition.TypeExpression | string): Meta.Type<T> {
-    const expression =
-      typeof expressionSource === "string" ? definition.parseTypeExpression(expressionSource) : expressionSource
+  evaluate<T extends Data.Value>(expressionSource: Data.TypeExpression | string): Data.Type<T> {
+    const expression = typeof expressionSource === "string" ? parseTypeExpression(expressionSource) : expressionSource
     // grab type from cache if possible
     const type =
       this.#cache.get(expression) ??
       // otherwise evaluate it, adding results to the cache and the reversed cache
       new Evaluation(this.#definitions, expression, this.#cache, this.#reversedCache).type
-    return type as Meta.Type<T>
+    return type as Data.Type<T>
   }
-  unevaluate<T extends Data.Value = Data.Value>(type: Meta.Type<T>): IteratorObject<Definition.TypeExpression> {
+  unevaluate<T extends Data.Value = Data.Value>(type: Data.Type<T>): IteratorObject<Data.TypeExpression> {
     const expressions = this.#reversedCache.get(type) ?? []
     // iterate over expressions that evaluated to given type
     return expressions.values()
   }
 }
 // keep track of services whose type definitions are being loaded, or already have been loaded
-const loading: { [serviceName: string]: Promise<Definition.TypeDefinitions> } = Object.create(null)
+const loading: { [serviceName: string]: Promise<Data.TypeDefinitions> } = Object.create(null)
 // compute dependency graph to detect inclusion cycles
 const dependencyGraph: { [serviceName: string]: Set<string> } = Object.create(null)
-function loadTypeDefinitions(serviceName: ServiceName): Promise<Definition.TypeDefinitions> {
+function loadTypeDefinitions(serviceName: ServiceName): Promise<Data.TypeDefinitions> {
   loading[serviceName] ??= load(serviceName)
   return loading[serviceName]
 }
 // load type definitions of service
-async function load(serviceName: ServiceName): Promise<Definition.TypeDefinitions> {
+async function load(serviceName: ServiceName): Promise<Data.TypeDefinitions> {
   const dependencies = new Set<string>()
   dependencyGraph[serviceName] = dependencies
   // query loader to locate module with type definitions
@@ -326,9 +321,9 @@ async function load(serviceName: ServiceName): Promise<Definition.TypeDefinition
   const location = new URL(`${serviceName}/datatype.js`, bundles[0]).href
   const module: TypeDefinitionsModule = await import(location)
   // parse sources of type expressions
-  const accu: { [typeName: string]: Definition.TypeExpression } = Object.create(null)
+  const accu: { [typeName: string]: Data.TypeExpression } = Object.create(null)
   for (const typeName in module.definitions) {
-    accu[typeName] = definition.parseTypeExpression(module.definitions[typeName], `${location}@${typeName}`)
+    accu[typeName] = parseTypeExpression(module.definitions[typeName], `${location}@${typeName}`)
   }
   // check for cycles in dependency graph
   const inclusions = [...new Set(module.include ?? [])] as ServiceName[]

@@ -1,5 +1,5 @@
 declare module "std.news" {
-  import type Future from "std.theater.future"
+  import type Future from "std.future"
   export default News
   /**
    * The news service provides reporting operations and consumption of reported information.
@@ -59,9 +59,9 @@ declare module "std.news" {
      * Regular application code should probably not consume news messages.
      * It should only report messages with the debug, info, log, warn and error operations.
      *
-     * @returns A cue that signals a message
+     * @returns An event that signals a message
      */
-    consume<P extends unknown[]>(): Future.Cue<News.Message<P>>
+    consume<P extends unknown[]>(): Future.Event<News.Message<P>>
   }
   namespace News {
     /**

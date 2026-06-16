@@ -104,6 +104,79 @@ function qux(): void { ... }
 ...
 ```
 
+### `datatype.ts`
+
+Data types define the structure of immutable data values.
+Data values are used in different areas, but most importantly, in messages for remote actors.
+This ensures messages on the sender side are equivalent to messages on the receiver side.
+But data values also appear in other places e.g., to configure a service.
+
+The [data service](#stddata) provides operations to load type definitions in a data space.
+Data spaces can evaluate these definitions to actual types.
+
+```typescript
+export const definitions = {
+  // int32 is a subtype of number, but it's still a basic number
+  "Data.Basic": "boolean|number|string",
+  // defined values
+  "Data.Wildcard": "*",
+  // any value, including undefined
+  "Data.Any": "*?",
+  // optional values
+  "Data.Maybe": "a=* a?",
+  // sequential and string-keyed collections
+  "Data.List": "a=*? [a]",
+  "Data.Dictionary": "a=*? <a>",
+  // multidimensional tuples
+  "Data.Pair": "a=*? b=*? (a,b)",
+  ...
+  // spread record fields
+  "Data.Spread": "a={} b={} c={} d={} e={} f={} g={} h={} i={} j={} {/a,/b,/c,/d,/e,/f,/g,/h,/i,/j}",
+}
+```
+
+### `test.ts`
+
+This module implements test cases to verify the quality of a service provider.
+The [quality service](#stdquality) uses these modules to run service tests and collect them in test reports.
+
+
+```typescript
+import type Quality from 'std.quality'
+
+export default ({ assert, provider }: Quality.ServiceUnderTest<'std.fn'>): Quality.ServiceTest<'std.fn'> => [
+  // no hooks
+  {},
+  // test cases
+  {
+    isGeneratorFunction() {
+      function* generator() {}
+      function regular() {}
+      assert.true(provider.isGeneratorFunction(generator), "isGeneratorFunction with generator function should return true")
+      assert.false(provider.isGeneratorFunction(regular), "isGeneratorFunction with regular function should return false")
+      ...
+    },
+    isInt32() {
+      assert.true(provider.isInt32(0), "isInt32 with 0 should return true")
+      assert.true(provider.isInt32(1), "isInt32 with 1 should return true")
+      ...
+    },
+    iterateKeys() {
+      assert.deepEqual([], [...provider.iterateKeys({})], "iterateKeys with empty object should return empty iterator")
+      assert.deepEqual(["a", "b", "c"], [...provider.iterateKeys({ a: 42, b: 54, c: 68 })], "iterateKeys should preserve key order")
+      ...
+    },
+    iterateValues() {
+      ...
+    },
+    iterateEntries() {
+      ...
+    },
+    ...
+  },
+]
+```
+
 ## Standard services
 
 ### `std.loader`
@@ -135,34 +208,17 @@ The standard syntax service contains utilities for building a recursive descent 
 ### `std.data`
 
 The standard data service deals with typed data values.
-These immutable values are designed to be easily transported over the wire.
-
-### `std.data.definition`
-
-The standard data definition service implements a language for type definitions.
-
-### `std.data.meta`
-
-The standard data meta service is used to evaluate type expressions.
-The evaluated types are subsequently used to create data values e.g., records and lists.
-
-### `std.data.portability`
-
-The standard data portability service is used to transport values between systems.
-It supports marshalling data values into JSON representations, and unmarshalling these JSON representations back to the original values.
+These immutable values are designed to be easily transported over the wire e.g., in JSON format.
+The service introduces a language for type definitions.
 
 ### `std.theater`
 
 The standard theater is an actor system for JavaScript environments.
 
-### `std.theater.future`
+### `std.future`
 
-The standard theater future service contains utilities for theater cues.
-A theater cue reveals an asynchronous signal that an actor can await.
-
-### `std.theater.concurrency`
-
-The standard theater concurrency service provides support for common concurrency scenarios e.g., producer/consumer synchronisation.
+The standard future service contains utilities for events.
+An event reveals an asynchronous signal that somebody e.g., an actor, can await.
 
 ### `std.system`
 
@@ -184,3 +240,8 @@ The assert service is used in service tests, but it is not restricted to tests.
 
 The standard quality service is a testing framework.
 It uses actors to concurrently test service providers.
+
+### `std.config`
+
+The standard config service allows for tailored service configurations.
+It builds on the same principle as service providers, where bundles higher up in the stack can refine configurations lower in the stack.

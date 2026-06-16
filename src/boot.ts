@@ -1,4 +1,4 @@
-import type { Service, ServiceAspect, ServiceName } from "dixlib"
+import type Dixlib from "dixlib"
 import type Loader from "std.loader"
 import type System from "std.system"
 
@@ -15,7 +15,7 @@ export default function startSystem(bundleStack: Loader.Bindings[]): Promise<Sys
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // lazy service providers are instantiated on demand
-interface Lazy<Name extends ServiceName> {
+interface Lazy<Name extends Dixlib.ServiceName> {
   // promise to load contractor from extern module of a service provider
   (): Promise<Loader.Contractor<Name>>
   // if defined, the former lazy provider of this service (below current layer)
@@ -26,7 +26,7 @@ interface Layer {
   // layer id is module specifier of bindings
   readonly id: string
   // affected services per aspect
-  readonly aspects: { readonly [A in ServiceAspect]?: Set<ServiceName> }
+  readonly aspects: { readonly [A in Dixlib.ServiceAspect]?: Set<Dixlib.ServiceName> }
 }
 // edges in dependency graph
 interface DependencyEdges {
@@ -41,25 +41,26 @@ async function provideSystem() {
   return provide("std.system")
 }
 function createBootLoader(bundles: Loader.Bindings[]) {
-  const loader: Loader = { provide, use, query }
+  const loader: Loader = { provide, use, query, binds }
   // service loader stacks multiple layers on top of each other
   const stack = new Map<string, Layer>()
   // all service aspects that are bound in at least one layer
-  const boundAspects = new Set<ServiceAspect>()
+  const boundAspects = new Set<Dixlib.ServiceAspect>()
   // set with all specified services
   const specifications = new Set<string>()
   // keep track of instantiated service providers
-  const instantiated: { [name in ServiceName]: Promise<Service[ServiceName]> } = Object.create(null)
+  const instantiated: { [name in Dixlib.ServiceName]: Promise<Dixlib.Service[Dixlib.ServiceName]> } =
+    Object.create(null)
   // lazy providers are uninstantiated
-  const uninstantiated: { [name in ServiceName]: Lazy<ServiceName> } = Object.create(null)
+  const uninstantiated: { [name in Dixlib.ServiceName]: Lazy<Dixlib.ServiceName> } = Object.create(null)
   // add lazy provider of this loader service
   uninstantiated["std.loader"] = () => Promise.resolve(() => Promise.resolve(loader))
   // direct and indirect dependencies in dependency graph for meaningful error reporting
   const dependencyGraph: { [name: string]: DependencyEdges } = Object.create(null)
-  function provide<Name extends ServiceName>(name: Name): Promise<Service[Name]> {
+  function provide<Name extends Dixlib.ServiceName>(name: Name): Promise<Dixlib.Service[Name]> {
     if (name in instantiated) {
       // provide instantiated provider once and only once
-      return instantiated[name] as Promise<Service[Name]>
+      return instantiated[name] as Promise<Dixlib.Service[Name]>
     } else if (name in uninstantiated) {
       // instantiate lazy provider
       //@ts-expect-error: assume service name is valid
@@ -67,13 +68,13 @@ function createBootLoader(bundles: Loader.Bindings[]) {
       dependencyGraph[name] = { direct: new Set(), indirect: new Set() }
       delete uninstantiated[name]
       instantiated[name] = instantiate<Name>(name, lazy)
-      return instantiated[name] as Promise<Service[Name]>
+      return instantiated[name] as Promise<Dixlib.Service[Name]>
     } else {
       return Promise.reject(new Error(`cannot provide unknown service '${name}'`))
     }
   }
-  function use<Names extends ServiceName[]>(...names: Names) {
-    return Promise.all(names.map(name => provide(name))) as Promise<{ [Ix in keyof Names]: Service[Names[Ix]] }>
+  function use<Names extends Dixlib.ServiceName[]>(...names: Names) {
+    return Promise.all(names.map(name => provide(name))) as Promise<{ [Ix in keyof Names]: Dixlib.Service[Names[Ix]] }>
   }
   // query bound services of this loader
   function* query(options?: Loader.QueryOptions): Generator<Loader.QueryResult> {
@@ -111,14 +112,21 @@ function createBootLoader(bundles: Loader.Bindings[]) {
       }
     }
   }
+  // check whether a service is bound to an aspect in a bundle
+  function binds(name: Dixlib.ServiceName, aspect: Dixlib.ServiceAspect, bundleId: string): boolean {
+    return stack.get(bundleId)?.aspects[aspect]?.has(name) ?? false
+  }
   // instantiate a service from a lazy provider
-  async function instantiate<Name extends ServiceName>(name: Name, lazy: Lazy<Name>): Promise<Service[Name]> {
+  async function instantiate<Name extends Dixlib.ServiceName>(
+    name: Name,
+    lazy: Lazy<Name>
+  ): Promise<Dixlib.Service[Name]> {
     // construction of former provider, if any
     const { former } = lazy
     lazy.former = void 0
     // wait for contractor to provide the contract
     const contractor = await lazy()
-    let providingFormer: Promise<Service[Name]> | undefined = void 0
+    let providingFormer: Promise<Dixlib.Service[Name]> | undefined = void 0
     const provider = await contractor({
       name,
       // instantiate former provider in lower layer at most once
@@ -128,14 +136,16 @@ function createBootLoader(bundles: Loader.Bindings[]) {
             return providingFormer
           }
         : void 0,
-      use<Names extends ServiceName[]>(...names: Names): Promise<{ [Ix in keyof Names]: Service[Names[Ix]] }> {
+      use<Names extends Dixlib.ServiceName[]>(
+        ...names: Names
+      ): Promise<{ [Ix in keyof Names]: Dixlib.Service[Names[Ix]] }> {
         // register direct dependencies on other services
         const { direct } = dependencyGraph[name]
         for (const dependency of names) {
           // fail if a dependency cycle is detected
           addDependency(direct, name, dependency)
         }
-        return Promise.all(names.map(provide)) as Promise<{ readonly [Ix in keyof Names]: Service[Names[Ix]] }>
+        return Promise.all(names.map(provide)) as Promise<{ readonly [Ix in keyof Names]: Dixlib.Service[Names[Ix]] }>
       },
     })
     // determine service operations
@@ -191,11 +201,11 @@ function createBootLoader(bundles: Loader.Bindings[]) {
       throw new Error(`invalid bindings with duplicate id "${id}"`)
     }
     // group services of bindings by service aspects
-    const aspects: { [A in ServiceAspect]?: Set<ServiceName> } = Object.create(null)
+    const aspects: { [A in Dixlib.ServiceAspect]?: Set<Dixlib.ServiceName> } = Object.create(null)
     for (const serviceName in service) {
-      const name = serviceName as ServiceName
+      const name = serviceName as Dixlib.ServiceName
       for (const key in service[name]) {
-        const aspect = key as ServiceAspect
+        const aspect = key as Dixlib.ServiceAspect
         boundAspects.add(aspect)
         if (service[name][aspect]) {
           aspects[aspect] ??= new Set()
@@ -235,12 +245,12 @@ function createBootLoader(bundles: Loader.Bindings[]) {
   return loader
 }
 // query result at certain aspect and bindings id
-const emptyNames = new Set<ServiceName>()
+const emptyNames = new Set<Dixlib.ServiceName>()
 class QueryResult implements Loader.QueryResult {
-  readonly #aspect: ServiceAspect
+  readonly #aspect: Dixlib.ServiceAspect
   readonly #id: string
-  readonly #serviceNames: Set<ServiceName>
-  constructor(aspect: ServiceAspect, id: string, serviceNames = emptyNames) {
+  readonly #serviceNames: Set<Dixlib.ServiceName>
+  constructor(aspect: Dixlib.ServiceAspect, id: string, serviceNames = emptyNames) {
     this.#aspect = aspect
     this.#id = id
     this.#serviceNames = serviceNames
@@ -257,7 +267,7 @@ class QueryResult implements Loader.QueryResult {
   get serviceNames() {
     return this.#serviceNames.values()
   }
-  hasBindingFor(serviceName: ServiceName): boolean {
+  hasBindingFor(serviceName: Dixlib.ServiceName): boolean {
     return this.#serviceNames.has(serviceName)
   }
 }

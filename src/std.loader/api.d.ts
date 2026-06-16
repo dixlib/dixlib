@@ -36,6 +36,15 @@ declare module "std.loader" {
      * @returns An iterable iterator over bound services
      */
     query(options?: Loader.QueryOptions): IteratorObject<Loader.QueryResult>
+    /**
+     * Is a service bound to some aspect in a bundle?
+     *
+     * @param name Name of service
+     * @param aspect Service aspect
+     * @param bundleId Id of bundle
+     * @returns True if service is bound to aspect in the bundle, otherwise false
+     */
+    binds(name: Dixlib.ServiceName, aspect: Dixlib.ServiceAspect, bundleId: string): boolean
   }
   namespace Loader {
     /**

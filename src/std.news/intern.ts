@@ -1,6 +1,6 @@
+import type Future from "std.future"
 import type News from "std.news"
-import type Future from "std.theater.future"
-import { concurrency } from "./extern.js"
+import { future } from "./extern.js"
 
 export function debug<P extends unknown[]>(format: string, ...parameters: P) {
   produceNow("debug", format, parameters)
@@ -22,13 +22,13 @@ export function error<P extends unknown[]>(format: string, ...parameters: P) {
   produceNow("error", format, parameters)
 }
 
-export function consume<P extends unknown[]>(): Future.Cue<News.Message<P>> {
+export function consume<P extends unknown[]>(): Future.Event<News.Message<P>> {
   return messageExchange.consume()
 }
 
 // ----------------------------------------------------------------------------------------------------------------- //
 // 'infinite' buffer capacity for news messages
-const messageExchange = concurrency.createExchange<News.Message<unknown[]>>()
+const messageExchange = future.createExchange<News.Message<unknown[]>>()
 // produce now, consume later
 function produceNow(severity: News.Severity, format: string, parameters: unknown[]) {
   const message: News.Message<unknown[]> = {
