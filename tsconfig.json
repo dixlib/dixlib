@@ -2,7 +2,6 @@
   "extends": "./tsconfig-base.json",
   "exclude": ["./server"],
   "compilerOptions": {
-    "target": "esnext",
     "rootDir": "./src",
     "lib": ["ESNext", "WebWorker"],
     "typeRoots": ["./src"],

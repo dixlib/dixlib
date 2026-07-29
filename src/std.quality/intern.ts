@@ -168,18 +168,23 @@ class CollectorRole extends theater.Role<Collector>()(Object) implements Theater
   *generateReport(): Theater.Scene {
     // hold on to message context of sender to which the full report will be returned
     this.#reply = this.messageContext<Theater.Sender>()
-    for (const [name, bundle] of this.#testLoad) {
-      // create dedicated child actor for each test module
-      const testerRef = this.castChild<
-        ServiceTester,
-        [Dixlib.ServiceName, string, Theater.ActorRef<Quality.TestWatcher>]
-      >({
-        Role: ServiceTesterRole,
-        parameters: [name, bundle, this.#watcherRef],
-        guard: guardTester,
-      })
-      // run service test in child actor and collect returned result
-      testerRef().testService(this.self)
+    if (this.#testLoad.size === 0) {
+      // reply with empty test report
+      this.#replyWithTestReport()
+    } else {
+      for (const [name, bundle] of this.#testLoad) {
+        // create dedicated child actor for each test module
+        const testerRef = this.castChild<
+          ServiceTester,
+          [Dixlib.ServiceName, string, Theater.ActorRef<Quality.TestWatcher>]
+        >({
+          Role: ServiceTesterRole,
+          parameters: [name, bundle, this.#watcherRef],
+          guard: guardTester,
+        })
+        // run service test in child actor and collect returned result
+        testerRef().testService(this.self)
+      }
     }
   }
   @theater.Play

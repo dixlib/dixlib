@@ -1,7 +1,7 @@
 {
   "name": "dixlib",
   "description": "A service library for modern JavaScript systems.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "author": "dixlib@gmail.com",
   "keywords": [
     "service locator",
@@ -34,9 +34,9 @@
     "lint": "npx @biomejs/biome check --verbose"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "rolldown": "^1.1.1",
-    "typescript": "^6.0.3"
+    "@biomejs/biome": "^2.5.6",
+    "rolldown": "^1.2.0",
+    "typescript": "^7.0.2"
   },
   "workspaces": [
     "server"

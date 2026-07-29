@@ -5,18 +5,31 @@ try {
   const system = await startSystem([])
   const stop = performance.now()
   const loader = system.loader()
-  const [assert, config, data, future, kernel, news, syntax, theater] = await loader.use(
+  const [assert, config, data, future, kernel, net, news, syntax, theater] = await loader.use(
     "std.assert",
     "std.config",
     "std.data",
     "std.future",
     "std.kernel",
+    "std.net",
     "std.news",
     "std.syntax",
     "std.theater"
   )
   news.info("started at %d ms in %d ms", start, stop - start)
-  news.info("services: %O %O %O %O %O %O %O %O %O", assert, data, future, kernel, loader, news, syntax, system, theater)
+  news.info(
+    "services: %O %O %O %O %O %O %O %O %O %O",
+    assert,
+    data,
+    future,
+    kernel,
+    loader,
+    net,
+    news,
+    syntax,
+    system,
+    theater
+  )
   const subsystemRef = theater.startActor(system.Subsidiary(), [])
   const id = await system.ask(subsystemRef, subsystem => subsystem.id())
   news.info("subsystem %d started?", id)

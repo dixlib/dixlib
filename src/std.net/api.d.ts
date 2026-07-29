@@ -6,7 +6,7 @@ declare module "std.net" {
    * The standard net service provides operations for a distributed network of actors.
    *
    * The network is restricted to HTTPS.
-   * Network actors expose a protocol with the messages that they understand.
+   * Network actors expose protocols, which describe the messages that the actors understand.
    */
   interface Net {
     // SystemRouter(): Theater.RoleClass<Net.SystemRouter, []>
@@ -25,10 +25,11 @@ declare module "std.net" {
        *
        * The identity string is returned to the sender.
        * The identity is a URL, without leading protocol (https:// implied) and parameters.
-       * The URL path identifies an actor, or the host itself when the path is empty.
+       * The URL path identifies an actor.
+       * When the path is empty, the actor is a host i.e., server-side of guests.
        */
       identity(): Theater.OneWay
-      understands(protocol: Protocol): Theater.OneWay
+      understands(...protocols: string[]): Theater.OneWay
     }
     interface SystemRouter extends Resource {
       // route contextual message to actor behind network router
@@ -55,7 +56,6 @@ declare module "std.net" {
       readonly parameters: Data.JSON[]
     }
     interface Protocol<A extends Resource = Resource, Format extends Data.Format<unknown> = Data.Format<Data.JSON>> {
-      readonly dataspace: Data.Space
       readonly format: Format
       readonly hashcode: ArrayBuffer
       readonly message: {

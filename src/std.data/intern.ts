@@ -1,5 +1,5 @@
 export { isTypeExpression, parseTypeExpression, substituteTypeExpressions } from "./intern/definition.js"
-export { createDefaultFormat } from "./intern/portability.js"
+export { createFormatJSON } from "./intern/portability.js"
 export { inflate } from "./intern/space.js"
 export { equalType, isType, typeOf } from "./intern/type.js"
 export {

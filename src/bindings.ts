@@ -5,7 +5,7 @@ export const id = import.meta.url
 export const service: Dixlib.ServiceBindings = {
   "std.assert": { specification: true, implementation: true },
   "std.config": { specification: true, implementation: true },
-  "std.data": { specification: true, implementation: true, typedefs: true },
+  "std.data": { specification: true, implementation: true, typedefs: true, verification: true },
   "std.fn": { specification: true, implementation: true, verification: true },
   "std.future": { specification: true, implementation: true },
   "std.fx": { specification: true, implementation: true },

@@ -47,7 +47,7 @@ async function selecting<Options extends Data.Value>(serviceName: Dixlib.Service
     const datatype = configStack[0].datatype as string
     const [typeServiceName, typeSource] = datatype.split("/")
     const dataspace = await data.inflate(typeServiceName as Dixlib.ServiceName)
-    return data.createDefaultFormat(dataspace).unmarshall(options, typeSource) as Options
+    return data.createFormatJSON(dataspace).unmarshall(options, typeSource) as Options
   }
 }
 function deepMerge(options: Data.JSON, refinement: Data.JSON): Data.JSON {

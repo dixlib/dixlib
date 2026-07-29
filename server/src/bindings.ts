@@ -4,4 +4,5 @@ export const id = import.meta.url
 
 export const service: Dixlib.ServiceBindings = {
   "std.kernel": { implementation: true },
+  "std.net": { implementation: true },
 }

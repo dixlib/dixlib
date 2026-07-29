@@ -195,7 +195,7 @@ declare module "std.data" {
      * @param dataspace Data space with type definitions
      * @returns A new portability format
      */
-    createDefaultFormat(dataspace: Data.Space): Data.Format<Data.JSON>
+    createFormatJSON(dataspace: Data.Space): Data.Format<Data.JSON>
   }
   namespace Data {
     /**

@@ -4,7 +4,7 @@ import { parseTypeExpression } from "./definition.js"
 import { equalType } from "./type.js"
 import { dictionary, isDictionary, isList, isRecord, isTuple, list, record, tuple } from "./value.js"
 
-export function createDefaultFormat(dataspace: Data.Space): Data.Format<Data.JSON> {
+export function createFormatJSON(dataspace: Data.Space): Data.Format<Data.JSON> {
   return new DefaultFormat(dataspace)
 }
 

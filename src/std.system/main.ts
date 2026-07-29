@@ -34,7 +34,7 @@ export let inherited: {
 // ----------------------------------------------------------------------------------------------------------------- //
 async function startSubsystem({ dixlib, bundleStack }: Initial) {
   // import "dixlib" with specifier from parent system
-  const { default: startSystem }: Dixlib.DefaultExport = await import(dixlib)
+  const { default: startSystem }: Dixlib.Export = await import(dixlib)
   // start child system with given bundle stack
   await startSystem(bundleStack)
 }

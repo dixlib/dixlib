@@ -58,7 +58,7 @@ class SupportRole extends theater.Role<Support>()(Object) implements Theater.Scr
   }
   #createContainers() {
     return {
-      // senders are actors in this system that expect a message from an actor in a nearyby system
+      // senders are actors in this system that expect a message from an actor in a nearby system
       sender: this.castChild({
         Role: ContainerRole()(Object),
         parameters: [],

@@ -94,13 +94,19 @@ declare module "dixlib" {
     readonly [Name in ServiceName]?: ServiceAspects
   }
   /**
-   * Default export starts systems and subsystems.
+   * Export of dixlib package.
    */
-  export type DefaultExport = { readonly default: typeof startSystem }
-  /**
-   * Start a new system.
-   * @param bundleStack Bindings of bundle stack
-   * @returns A promise of the system provider
-   */
-  export function startSystem(bundleStack: Loader.Bindings[]): Promise<System>
+  export interface Export {
+    /**
+     * Start a new system.
+     * @param bundleStack Bindings of bundle stack
+     * @returns A promise of the system provider
+     */
+    default(bundleStack: Loader.Bindings[]): Promise<System>
+  }
+}
+
+declare module "*.pem" {
+  const content: Uint8Array
+  export default content
 }
